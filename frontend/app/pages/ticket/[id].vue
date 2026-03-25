@@ -43,13 +43,93 @@
           <h1 class="ticket-title">{{ bug.title }}</h1>
         </div>
 
+        <!-- Subtitles -->
+        <div v-if="bug.subtitles && bug.subtitles.length" class="ticket-section">
+          <div class="ticket-section-label">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            Subtitles
+          </div>
+          <div class="ticket-subtitle-list">
+            <div v-for="(sub, idx) in bug.subtitles" :key="idx" class="ticket-subtitle-card">
+              <div class="ticket-subtitle-index">{{ idx + 1 }}</div>
+              <div class="ticket-subtitle-content">
+                <div v-if="(typeof sub === 'string' ? sub : sub.text)" class="ticket-subtitle-text">{{ typeof sub === 'string' ? sub : sub.text }}</div>
+                <a v-if="sub.link" :href="sub.link" target="_blank" rel="noopener" class="ticket-subtitle-link">
+                  <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                  {{ sub.link }}
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Description -->
-        <div v-if="bug.description" class="ticket-section">
+        <div class="ticket-section">
           <div class="ticket-section-label">
             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
             Description
           </div>
-          <div class="ticket-description" v-html="bug.description"></div>
+          <div v-if="bug.description" class="ticket-description" v-html="bug.description"></div>
+          <div v-else class="ticket-empty-text">No description provided.</div>
+        </div>
+
+        <!-- Dev Comments -->
+        <div class="ticket-section">
+          <div class="ticket-section-label" style="justify-content:space-between;">
+            <span style="display:flex;align-items:center;gap:7px;">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              Comments
+            </span>
+            <span v-if="bug.dev_comments?.length" class="ticket-count-pill">{{ bug.dev_comments.length }}</span>
+          </div>
+          <div v-if="bug.dev_comments && bug.dev_comments.length" class="ticket-dev-comments">
+            <div v-for="(msg, i) in bug.dev_comments" :key="i" class="ticket-dev-comment-item">
+              <div class="ticket-dev-comment-header">
+                <span class="ticket-dev-comment-avatar">{{ (msg.author || '?')[0].toUpperCase() }}</span>
+                <span class="ticket-dev-comment-author">{{ msg.author || 'Anonymous' }}</span>
+                <span class="ticket-dev-comment-time">{{ formatTime(msg.timestamp) }}{{ msg.edited ? ' · edited' : '' }}</span>
+              </div>
+              <div class="ticket-dev-comment-bubble">{{ msg.message }}</div>
+            </div>
+          </div>
+          <div v-else class="ticket-empty-text">No comments yet.</div>
+        </div>
+
+        <!-- Screenshots -->
+        <div class="ticket-screenshots-row">
+          <div class="ticket-section">
+            <div class="ticket-section-label">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              Screenshots — <span style="color:#0891b2;font-weight:700;">Front-End</span>
+              <span v-if="bug.frontend_images?.length" class="ticket-count-pill">{{ bug.frontend_images.length }}</span>
+            </div>
+            <div v-if="bug.frontend_images && bug.frontend_images.length" class="ticket-img-grid">
+              <a v-for="(img, idx) in bug.frontend_images" :key="idx" :href="storageBase + img" target="_blank" class="ticket-img-item">
+                <img :src="storageBase + img" :alt="`FE ${idx+1}`" />
+                <div class="ticket-img-overlay">
+                  <svg width="16" height="16" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                </div>
+              </a>
+            </div>
+            <div v-else class="ticket-empty-text">No images attached.</div>
+          </div>
+
+          <div class="ticket-section">
+            <div class="ticket-section-label">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              Screenshots — <span style="color:#7c3aed;font-weight:700;">CMS</span>
+              <span v-if="bug.cms_images?.length" class="ticket-count-pill">{{ bug.cms_images.length }}</span>
+            </div>
+            <div v-if="bug.cms_images && bug.cms_images.length" class="ticket-img-grid">
+              <a v-for="(img, idx) in bug.cms_images" :key="idx" :href="storageBase + img" target="_blank" class="ticket-img-item">
+                <img :src="storageBase + img" :alt="`CMS ${idx+1}`" />
+                <div class="ticket-img-overlay">
+                  <svg width="16" height="16" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                </div>
+              </a>
+            </div>
+            <div v-else class="ticket-empty-text">No images attached.</div>
+          </div>
         </div>
 
         <!-- Activity Thread -->
@@ -206,9 +286,10 @@
 import { ref, computed, nextTick, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 
-const route   = useRoute()
-const config  = useRuntimeConfig()
-const apiBase = config.public.apiBase
+const route       = useRoute()
+const config      = useRuntimeConfig()
+const apiBase     = config.public.apiBase          // used for API calls  e.g. /api/bugs/1/ticket
+const storageBase = config.public.apiBase.replace('/api', '') // used for image src  e.g. /storage/bug-images/...
 
 const bug            = ref(null)
 const loading        = ref(true)
@@ -397,6 +478,37 @@ onMounted(loadTicket)
 .ticket-status--out-of-scope { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
 .ticket-status--ongoing { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
 .ticket-status--completed { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
+
+/* Subtitles */
+.ticket-subtitle-list { display: flex; flex-direction: column; gap: 8px; }
+.ticket-subtitle-card { display: flex; align-items: flex-start; gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; }
+.ticket-subtitle-index { width: 24px; height: 24px; border-radius: 50%; background: #4f46e5; color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ticket-subtitle-content { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ticket-subtitle-text { font-size: 13.5px; color: #334155; font-weight: 500; }
+.ticket-subtitle-link { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: #4f46e5; text-decoration: none; word-break: break-all; }
+.ticket-subtitle-link:hover { text-decoration: underline; }
+
+/* Dev Comments */
+.ticket-dev-comments { display: flex; flex-direction: column; gap: 10px; }
+.ticket-dev-comment-item { display: flex; flex-direction: column; gap: 5px; }
+.ticket-dev-comment-header { display: flex; align-items: center; gap: 8px; }
+.ticket-dev-comment-avatar { width: 24px; height: 24px; border-radius: 50%; background: #4f46e5; color: #fff; font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ticket-dev-comment-author { font-size: 13px; font-weight: 600; color: #1e293b; }
+.ticket-dev-comment-time { font-size: 11px; color: #94a3b8; }
+.ticket-dev-comment-bubble { background: #f8fafc; border-radius: 3px 10px 10px 10px; padding: 10px 14px; font-size: 13px; color: #334155; line-height: 1.6; margin-left: 32px; }
+
+/* Screenshots */
+.ticket-screenshots-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 640px) { .ticket-screenshots-row { grid-template-columns: 1fr; } }
+.ticket-img-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.ticket-img-item { position: relative; width: 100px; height: 72px; border-radius: 8px; overflow: hidden; cursor: pointer; border: 1px solid #e2e8f0; }
+.ticket-img-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ticket-img-overlay { position: absolute; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .15s; }
+.ticket-img-item:hover .ticket-img-overlay { opacity: 1; }
+
+/* Misc */
+.ticket-count-pill { background: #e0e7ff; color: #4f46e5; font-size: 11px; font-weight: 700; border-radius: 99px; padding: 2px 8px; }
+.ticket-empty-text { font-size: 13px; color: #94a3b8; font-style: italic; }
 
 /* Shared badge styles (copied for scoped) */
 .bug-seq { font-size: 12px; font-weight: 700; color: #94a3b8; background: #f1f5f9; padding: 2px 8px; border-radius: 6px; }

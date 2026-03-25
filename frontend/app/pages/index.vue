@@ -185,13 +185,94 @@
                   <h2 class="tt-detail-title">{{ ttDetailBug.title }}</h2>
                 </div>
 
+                <!-- Subtitles -->
+                <div v-if="ttDetailBug.subtitles && ttDetailBug.subtitles.length" class="tt-detail-section">
+                  <div class="tt-detail-section-label">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                    Subtitles
+                  </div>
+                  <div class="bug-view-subtitle-list">
+                    <div v-for="(sub, idx) in ttDetailBug.subtitles" :key="idx" class="bug-view-subtitle-card">
+                      <div class="bug-view-subtitle-index">{{ idx + 1 }}</div>
+                      <div class="bug-view-subtitle-content">
+                        <div v-if="(typeof sub === 'string' ? sub : sub.text)" class="bug-view-subtitle-text">{{ typeof sub === 'string' ? sub : sub.text }}</div>
+                        <a v-if="sub.link" :href="sub.link" target="_blank" rel="noopener" class="bug-view-subtitle-link">
+                          <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                          {{ sub.link }}
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <!-- Description -->
-                <div v-if="ttDetailBug.description" class="tt-detail-section">
+                <div class="tt-detail-section">
                   <div class="tt-detail-section-label">
                     <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                     Description
                   </div>
-                  <div class="ticket-description" v-html="ttDetailBug.description"></div>
+                  <div v-if="ttDetailBug.description" class="ticket-description" v-html="ttDetailBug.description"></div>
+                  <div v-else class="bug-view-empty">No description provided.</div>
+                </div>
+
+                <!-- Dev Comments -->
+                <div class="tt-detail-section">
+                  <div class="tt-detail-section-label" style="justify-content:space-between;">
+                    <span style="display:flex;align-items:center;gap:6px;">
+                      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                      Comments
+                    </span>
+                    <span v-if="ttDetailBug.dev_comments?.length" class="bug-view-count-pill">{{ ttDetailBug.dev_comments.length }}</span>
+                  </div>
+                  <div v-if="ttDetailBug.dev_comments && ttDetailBug.dev_comments.length" class="thread-msg-list" style="gap:8px;">
+                    <div v-for="(msg, i) in ttDetailBug.dev_comments" :key="i" class="thread-msg-item">
+                      <div class="thread-msg-author-row">
+                        <span class="thread-msg-avatar">{{ (msg.author || '?')[0].toUpperCase() }}</span>
+                        <span class="thread-msg-author-name">{{ msg.author || 'Anonymous' }}</span>
+                        <span class="thread-msg-time-inline">{{ formatThreadTime(msg.timestamp) }}</span>
+                      </div>
+                      <div class="thread-msg-bubble">{{ msg.message }}</div>
+                    </div>
+                  </div>
+                  <div v-else class="bug-view-empty">No comments yet.</div>
+                </div>
+
+                <!-- Screenshots -->
+                <div class="bug-view-screenshots-row">
+                  <div class="tt-detail-section bug-view-screenshot-col">
+                    <div class="tt-detail-section-label">
+                      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                      <span>Screenshots — <span class="label-fe">Front-End</span></span>
+                      <span v-if="ttDetailBug.frontend_images?.length" class="bug-view-count-pill">{{ ttDetailBug.frontend_images.length }}</span>
+                    </div>
+                    <div v-if="ttDetailBug.frontend_images && ttDetailBug.frontend_images.length" class="bug-view-images">
+                      <a v-for="(img, idx) in ttDetailBug.frontend_images" :key="idx" :href="apiBase + img" target="_blank" class="bug-view-img-item">
+                        <img :src="apiBase + img" :alt="`FE ${idx+1}`" />
+                        <div class="bug-view-img-overlay">
+                          <svg width="18" height="18" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                          <span>Open</span>
+                        </div>
+                      </a>
+                    </div>
+                    <div v-else class="bug-view-empty">No images attached.</div>
+                  </div>
+                  <div class="tt-detail-section bug-view-screenshot-col">
+                    <div class="tt-detail-section-label">
+                      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                      <span>Screenshots — <span class="label-cms">CMS</span></span>
+                      <span v-if="ttDetailBug.cms_images?.length" class="bug-view-count-pill">{{ ttDetailBug.cms_images.length }}</span>
+                    </div>
+                    <div v-if="ttDetailBug.cms_images && ttDetailBug.cms_images.length" class="bug-view-images">
+                      <a v-for="(img, idx) in ttDetailBug.cms_images" :key="idx" :href="apiBase + img" target="_blank" class="bug-view-img-item">
+                        <img :src="apiBase + img" :alt="`CMS ${idx+1}`" />
+                        <div class="bug-view-img-overlay">
+                          <svg width="18" height="18" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                          <span>Open</span>
+                        </div>
+                      </a>
+                    </div>
+                    <div v-else class="bug-view-empty">No images attached.</div>
+                  </div>
                 </div>
 
                 <!-- Activity -->
