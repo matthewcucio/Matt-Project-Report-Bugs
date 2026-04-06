@@ -33,6 +33,9 @@ Route::middleware('api.auth:optional')->group(function () {
     // Dev status
     Route::patch('bugs/{bug}/dev-status', [BugController::class, 'updateDevStatus']);
 
+    // Date to accomplish
+    Route::patch('bugs/{bug}/date-to-accomplish', [BugController::class, 'updateDateToAccomplish']);
+
     // Team members list
     Route::get('team-members', [BugController::class, 'teamMembers']);
 });

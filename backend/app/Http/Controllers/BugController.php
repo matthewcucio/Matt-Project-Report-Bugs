@@ -62,6 +62,7 @@ class BugController extends Controller
             'priority'         => 'required|in:Critical,High,Medium,Low',
             'scenario_type'    => 'required|in:UI,Functionality,UI & Functionality',
             'status'              => 'required|in:Pending,Out of Scope,Ongoing,Completed',
+            'date_to_accomplish'  => 'nullable|date',
             'developer_comment'   => 'nullable|string',
             'images.*'            => 'nullable|image|max:5120',
             'frontend_images.*'=> 'nullable|image|max:5120',
@@ -132,6 +133,7 @@ class BugController extends Controller
             'status'                   => 'sometimes|required|in:Pending,Out of Scope,Ongoing,Completed',
             'developer_comment'        => 'nullable|string',
             'dev_comments_json'        => 'nullable|string',
+            'date_to_accomplish'       => 'nullable|date',
             'images.*'                 => 'nullable|image|max:5120',
             'existing_images'          => 'nullable|array',
             'frontend_images.*'        => 'nullable|image|max:5120',
@@ -386,7 +388,7 @@ class BugController extends Controller
 
         $authorName = $request->input('author', 'Developer');
 
-        $bug->update(['status' => 'Completed']);
+        $bug->update(['status' => 'Completed', 'resolved_by' => $authorName]);
 
         $log = $bug->activity_log ?? [];
         $log[] = [
@@ -421,6 +423,36 @@ class BugController extends Controller
             'content'   => "Dev status changed from {$oldStatus} to {$newStatus}",
             'old_value' => $oldStatus,
             'new_value' => $newStatus,
+            'timestamp' => now()->toIso8601String(),
+        ];
+        $bug->update(['activity_log' => $log]);
+
+        return response()->json($bug->load(['assignedDeveloper:id,name,email,avatar', 'project:id,name,color']));
+    }
+
+    // ── Date to Accomplish ────────────────────────────────────────────────────
+
+    public function updateDateToAccomplish(Request $request, Bug $bug)
+    {
+        $request->validate([
+            'date_to_accomplish' => 'nullable|date',
+            'author'             => 'nullable|string|max:255',
+        ]);
+
+        $old = $bug->date_to_accomplish?->format('Y-m-d');
+        $new = $request->input('date_to_accomplish');
+
+        $bug->update(['date_to_accomplish' => $new ?: null]);
+
+        $log = $bug->activity_log ?? [];
+        $log[] = [
+            'type'      => 'date_to_accomplish_change',
+            'user_name' => $request->input('author', 'Developer'),
+            'content'   => $new
+                ? "Date to accomplish set to {$new}" . ($old ? " (was {$old})" : '')
+                : 'Date to accomplish cleared',
+            'old_value' => $old,
+            'new_value' => $new,
             'timestamp' => now()->toIso8601String(),
         ];
         $bug->update(['activity_log' => $log]);

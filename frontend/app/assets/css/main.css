@@ -1084,6 +1084,24 @@ tbody tr.bug-row-completed .bug-title-main { text-decoration: line-through; colo
 .send-ticket-btn--disabled { background: var(--gray-50); color: var(--gray-300); border-color: var(--gray-200); cursor: not-allowed; }
 .send-ticket-btn--sent { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; cursor: default; }
 
+/* ── Accomplish Date ─────────────────────────────────────────────────────── */
+.accomplish-date { font-size: 12px; color: var(--gray-600); white-space: nowrap; }
+.accomplish-date--overdue { color: #dc2626; font-weight: 600; }
+.resolved-by-name { font-size: 12px; color: #16a34a; font-weight: 500; }
+
+/* ── Ticket Replies (table badge + modal section) ────────────────────────── */
+.ticket-replies-badge { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 11px; font-weight: 500; color: #6366f1; background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 20px; padding: 2px 7px; cursor: pointer; width: fit-content; }
+.ticket-replies-badge:hover { background: #e0e7ff; }
+.ticket-replies-list { display: flex; flex-direction: column; gap: 8px; }
+.ticket-reply-item { display: flex; gap: 10px; align-items: flex-start; }
+.ticket-reply-avatar { width: 28px; height: 28px; min-width: 28px; border-radius: 50%; background: #6366f1; color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.ticket-reply-body { flex: 1; background: #f8faff; border: 1px solid #e0e7ff; border-radius: 8px; padding: 8px 12px; }
+.ticket-reply-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.ticket-reply-author { font-size: 12px; font-weight: 600; color: #1e293b; }
+.ticket-reply-time { font-size: 11px; color: var(--gray-400); }
+.ticket-reply-text { font-size: 13px; color: #334155; line-height: 1.5; }
+.due-days-pill-sm { display: inline-block; font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 20px; border: 1px solid; width: fit-content; white-space: nowrap; }
+
 /* ── Dev Status Select ───────────────────────────────────────────────────── */
 .dev-status-select {
   appearance: none;

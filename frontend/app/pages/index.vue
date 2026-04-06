@@ -422,6 +422,18 @@
                       <span class="ticket-meta-key">Sent</span>
                       <span style="font-size:13px;color:var(--gray-800);">{{ formatBugDate(ttDetailBug.ticket_sent_at) }}</span>
                     </div>
+                    <div class="ticket-meta-row" style="align-items:flex-start;">
+                      <span class="ticket-meta-key">Due Date</span>
+                      <div v-if="ttDetailBug.date_to_accomplish" style="display:flex;flex-direction:column;gap:3px;">
+                        <span :style="{ fontSize: '13px', color: isAccomplishOverdue(ttDetailBug) ? '#dc2626' : 'var(--gray-800)', fontWeight: isAccomplishOverdue(ttDetailBug) ? '600' : 'normal' }">{{ formatBugDate(ttDetailBug.date_to_accomplish) }}</span>
+                        <span v-if="dueDaysLabel(ttDetailBug)" class="due-days-pill-sm" :style="{ color: dueDaysLabel(ttDetailBug).color, borderColor: dueDaysLabel(ttDetailBug).color + '40', background: dueDaysLabel(ttDetailBug).color + '12' }">{{ dueDaysLabel(ttDetailBug).text }}</span>
+                      </div>
+                      <span v-else style="font-size:13px;color:var(--gray-400);">—</span>
+                    </div>
+                    <div v-if="ttDetailBug.resolved_by" class="ticket-meta-row">
+                      <span class="ticket-meta-key">Resolved By</span>
+                      <span style="font-size:13px;color:var(--gray-800);">{{ ttDetailBug.resolved_by }}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -1207,9 +1219,10 @@
                         <th style="width:160px;">Scenario</th>
                         <th style="width:180px;">Status</th>
                         <th style="width:220px;">Comment</th>
-                        <th style="width:90px;">Images</th>
                         <th style="width:150px;">Assign Dev</th>
                         <th style="width:160px;">Dev Status</th>
+                        <th style="width:120px;">Due Date</th>
+                        <th style="width:130px;">Resolved By</th>
                         <th style="width:130px;text-align:center;">QA Notify</th>
                         <th style="width:130px;text-align:center;">Actions</th>
                       </tr>
@@ -1228,22 +1241,23 @@
                             <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
                           </select>
                         </td>
-                        <td class="dev-comment-cell" @click="openThread(bug)">
-                          <div class="dev-thread-trigger">
+                        <td class="dev-comment-cell">
+                          <div class="dev-thread-trigger" @click="openThread(bug)">
                             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                             <span v-if="bug.dev_comments && bug.dev_comments.length" class="dev-thread-count">{{ bug.dev_comments.length }}</span>
                             <span v-if="bug.dev_comments && bug.dev_comments.length" class="dev-thread-preview">{{ bug.dev_comments[bug.dev_comments.length - 1].message }}</span>
                             <span v-else class="dev-comment-empty">Add comment…</span>
                           </div>
+                          <div
+                            v-if="(bug.activity_log || []).filter(e => e.type === 'comment').length"
+                            class="ticket-replies-badge"
+                            @click="viewBug(bug)"
+                            title="View ticket replies"
+                          >
+                            <svg width="11" height="11" fill="currentColor" viewBox="0 0 24 24"><path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/></svg>
+                            {{ (bug.activity_log || []).filter(e => e.type === 'comment').length }} ticket {{ (bug.activity_log || []).filter(e => e.type === 'comment').length === 1 ? 'reply' : 'replies' }}
+                          </div>
                         </td>
-                        <td>
-                          <button v-if="bug.images && bug.images.length > 0" class="btn btn-ghost btn-sm" style="gap:4px;" @click="viewImages(bug)">
-                            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-                            {{ bug.images.length }}
-                          </button>
-                          <span v-else style="color:var(--gray-300);padding-left:4px;">—</span>
-                        </td>
-
                         <!-- Assign Dev -->
                         <td style="position:relative;" @click.stop>
                           <div class="assign-dev-wrap">
@@ -1345,6 +1359,23 @@
                             <option value="Ready for QA">Ready for QA ✅</option>
                             <option value="Blocked">Blocked ⚠️</option>
                           </select>
+                        </td>
+
+                        <!-- Due Date -->
+                        <td>
+                          <template v-if="bug.date_to_accomplish">
+                            <div style="display:flex;flex-direction:column;gap:3px;">
+                              <span :class="['accomplish-date', isAccomplishOverdue(bug) ? 'accomplish-date--overdue' : '']">{{ formatBugDate(bug.date_to_accomplish) }}</span>
+                              <span v-if="dueDaysLabel(bug)" class="due-days-pill-sm" :style="{ color: dueDaysLabel(bug).color, borderColor: dueDaysLabel(bug).color + '40', background: dueDaysLabel(bug).color + '12' }">{{ dueDaysLabel(bug).text }}</span>
+                            </div>
+                          </template>
+                          <span v-else style="color:var(--gray-300);padding-left:4px;">—</span>
+                        </td>
+
+                        <!-- Resolved By -->
+                        <td>
+                          <span v-if="bug.resolved_by" class="resolved-by-name">{{ bug.resolved_by }}</span>
+                          <span v-else style="color:var(--gray-300);padding-left:4px;">—</span>
                         </td>
 
                         <!-- QA Notify -->
@@ -1475,11 +1506,17 @@
                   </select>
                 </div>
               </div>
-              <div class="form-group">
-                <label class="form-label">Status <span class="required">*</span></label>
-                <select v-model="form.status" class="form-control" required>
-                  <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
-                </select>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div class="form-group" style="margin-bottom:0;">
+                  <label class="form-label">Status <span class="required">*</span></label>
+                  <select v-model="form.status" class="form-control" required>
+                    <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
+                  </select>
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                  <label class="form-label">Date to Accomplish</label>
+                  <input type="date" v-model="form.date_to_accomplish" class="form-control" />
+                </div>
               </div>
               <div class="form-group">
                 <label class="form-label">Description</label>
@@ -1729,6 +1766,32 @@
                   </div>
                 </div>
                 <div v-else class="bug-view-empty">No developer comments yet.</div>
+              </div>
+            </div>
+
+            <!-- Ticket Replies -->
+            <div class="bug-view-section">
+              <div class="bug-view-section-label" style="justify-content:space-between;">
+                <span style="display:flex;align-items:center;gap:6px;">
+                  <svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24"><path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/></svg>
+                  Ticket Replies
+                </span>
+                <span v-if="(viewingBugDetail?.activity_log || []).filter(e => e.type === 'comment').length" class="bug-view-count-pill">{{ (viewingBugDetail.activity_log || []).filter(e => e.type === 'comment').length }}</span>
+              </div>
+              <div class="ticket-replies-list">
+                <template v-if="(viewingBugDetail?.activity_log || []).filter(e => e.type === 'comment').length">
+                  <div v-for="(entry, i) in (viewingBugDetail.activity_log || []).filter(e => e.type === 'comment')" :key="i" class="ticket-reply-item">
+                    <div class="ticket-reply-avatar">{{ (entry.user_name || '?')[0].toUpperCase() }}</div>
+                    <div class="ticket-reply-body">
+                      <div class="ticket-reply-header">
+                        <span class="ticket-reply-author">{{ entry.user_name }}</span>
+                        <span class="ticket-reply-time">{{ formatThreadTime(entry.timestamp) }}</span>
+                      </div>
+                      <div class="ticket-reply-text">{{ entry.content }}</div>
+                    </div>
+                  </div>
+                </template>
+                <div v-else class="bug-view-empty">No ticket replies yet.</div>
               </div>
             </div>
 
@@ -2239,7 +2302,7 @@ const existingCmsImages    = ref([])
 const frontendFileInput    = ref(null)
 const cmsFileInput         = ref(null)
 const filters         = ref({ search: '', status: '', priority: '', scenario_type: '' })
-const form = ref({ title: '', description: '', priority: 'Medium', scenario_type: 'UI', status: 'Pending', subtitles: [{ text: '', link: '' }] })
+const form = ref({ title: '', description: '', priority: 'Medium', scenario_type: 'UI', status: 'Pending', date_to_accomplish: '', subtitles: [{ text: '', link: '' }] })
 const showThreadModal  = ref(false)
 const threadBugId      = ref(null)
 const newThreadMessage = ref('')
@@ -2540,7 +2603,7 @@ const fetchBugs = async () => {
 
 const openCreateModal = () => {
   editingBug.value = null
-  form.value = { title: '', description: '', priority: 'Medium', scenario_type: 'UI', status: 'Pending', subtitles: [{ text: '', link: '' }] }
+  form.value = { title: '', description: '', priority: 'Medium', scenario_type: 'UI', status: 'Pending', date_to_accomplish: '', subtitles: [{ text: '', link: '' }] }
   newImageFiles.value = []; existingImages.value = []
   newFrontendFiles.value = []; existingFrontendImages.value = []
   newCmsFiles.value = []; existingCmsImages.value = []
@@ -2556,6 +2619,7 @@ const openEditModal = (bug) => {
     priority: bug.priority,
     scenario_type: bug.scenario_type,
     status: bug.status,
+    date_to_accomplish: bug.date_to_accomplish ?? '',
     subtitles: (bug.subtitles && bug.subtitles.length) ? bug.subtitles.map(s => typeof s === 'string' ? { text: s, link: '' } : { text: s.text || '', link: s.link || '' }) : [{ text: '', link: '' }],
   }
   existingImages.value = bug.images || []; newImageFiles.value = []
@@ -2598,6 +2662,7 @@ const submitForm = async () => {
     fd.append('title', form.value.title); fd.append('description', form.value.description || '')
     fd.append('priority', form.value.priority); fd.append('scenario_type', form.value.scenario_type)
     fd.append('status', form.value.status)
+    fd.append('date_to_accomplish', form.value.date_to_accomplish || '')
     form.value.subtitles.filter(s => s.text.trim() || s.link.trim()).forEach((s, i) => {
       fd.append(`subtitles[${i}][text]`, s.text)
       fd.append(`subtitles[${i}][link]`, s.link || '')
@@ -2645,6 +2710,21 @@ const viewBug     = (bug)  => { viewingBugDetail.value = bug; showViewModal.valu
 const formatBugDate = (dateStr) => {
   if (!dateStr) return ''
   return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+}
+const isAccomplishOverdue = (bug) => {
+  if (!bug.date_to_accomplish) return false
+  return new Date(bug.date_to_accomplish) < new Date(new Date().toDateString())
+}
+const dueDaysLabel = (bug) => {
+  if (!bug.date_to_accomplish) return null
+  const today = new Date(new Date().toDateString())
+  const due   = new Date(bug.date_to_accomplish)
+  const diff  = Math.round((due - today) / 86400000)
+  if (diff < 0)   return { text: diff === -1 ? '1 day overdue' : `${Math.abs(diff)} days overdue`, color: '#dc2626' }
+  if (diff === 0) return { text: 'Due today',         color: '#dc2626' }
+  if (diff <= 2)  return { text: `${diff} day${diff === 1 ? '' : 's'} left`, color: '#dc2626' }
+  if (diff <= 7)  return { text: `${diff} days left`, color: '#d97706' }
+  return { text: `${diff} days left`, color: '#16a34a' }
 }
 const clearFilters = () => { filters.value = { search: '', status: '', priority: '', scenario_type: '' } }
 
