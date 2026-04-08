@@ -2905,7 +2905,7 @@ async function generateFolderLink(dev) {
   try {
     const body = {
       developer_email: dev.email,
-      developer_name:  dev.name,
+      developer_name:  dev.name.split(' ')[0],
       visibility:      'private',
     }
 
