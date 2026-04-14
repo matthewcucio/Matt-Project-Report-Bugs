@@ -1541,12 +1541,12 @@
 
           <template v-else>
             <!-- ── Bug Tracker Folders ── -->
-            <div v-if="devFolders.length" class="df-section-label">
+            <div class="df-section-label">
               <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
               Bug Tracker
             </div>
 
-          <div v-else class="df-grid">
+          <div v-if="devFolders.length" class="df-grid">
             <div v-for="(folder, idx) in devFolders" :key="folder.token" class="df-card df-card--clickable" :style="`--i:${idx}`" @click="openFolderDetail(folder)">
               <div class="df-card-hero" :style="{ background: folder.avatar_color || '#4f46e5' }">
                 <button
@@ -1661,6 +1661,7 @@
               </div>
             </Transition>
           </Teleport>
+          </template>
         </div>
 
         <!-- ══ Project view ══ -->

@@ -168,49 +168,6 @@
 
       </div>
 
-      <!-- ── Done section ─────────────────────────────────────────────────── -->
-      <div v-if="countByStatus('Completed') > 0 && !activeFilter" id="folder-done-section" class="folder-done-section">
-        <button class="folder-done-toggle" @click="showDoneSection = !showDoneSection">
-          <span class="folder-done-check">✓</span>
-          <span class="folder-done-label">Done</span>
-          <span class="folder-done-count-badge">{{ countByStatus('Completed') }}</span>
-          <svg class="folder-done-chevron" :style="{ transform: showDoneSection ? 'rotate(180deg)' : 'rotate(0deg)' }" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-
-        <div v-if="showDoneSection" class="folder-done-body">
-          <div v-for="project in completedGrouped" :key="project.id" class="folder-done-project">
-            <div class="folder-done-project-header">
-              <span style="font-size:13px;">📁</span>
-              <span class="folder-done-project-name">{{ project.name }}</span>
-              <span class="folder-done-project-count">{{ project.bugs.length }} ticket{{ project.bugs.length !== 1 ? 's' : '' }}</span>
-            </div>
-            <div class="folder-ticket-list">
-              <a
-                v-for="bug in project.bugs"
-                :key="bug.id"
-                :href="ticketUrl(bug)"
-                class="folder-ticket-card folder-ticket-card--done"
-              >
-                <div class="folder-ticket-top">
-                  <span class="folder-done-tick">✓</span>
-                  <span class="folder-ticket-seq">#{{ bug.sequence }}</span>
-                  <span :class="['folder-ticket-priority', priorityClass(bug.priority)]">{{ bug.priority }}</span>
-                  <span v-if="bug.scenario_type" class="folder-ticket-scenario">{{ bug.scenario_type }}</span>
-                </div>
-                <div class="folder-ticket-title folder-ticket-title--done">{{ bug.title }}</div>
-                <div v-if="bug.subtitles && bug.subtitles.length" class="folder-ticket-subtitles">
-                  <span v-for="(sub, i) in bug.subtitles.slice(0,2)" :key="i" class="folder-ticket-subtitle-chip">
-                    {{ typeof sub === 'string' ? sub : sub.text }}
-                  </span>
-                  <span v-if="bug.subtitles.length > 2" class="folder-ticket-subtitle-chip" style="background:#f1f5f9;color:#64748b;">
-                    +{{ bug.subtitles.length - 2 }} more
-                  </span>
-                </div>
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
 
     </div>
 
