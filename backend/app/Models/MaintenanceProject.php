@@ -14,6 +14,7 @@ class MaintenanceProject extends Model
         'contract_start',
         'contract_end',
         'owner_id',
+        'link_permission',
     ];
 
     protected $casts = [

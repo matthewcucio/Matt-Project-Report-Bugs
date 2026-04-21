@@ -29,6 +29,7 @@ Route::middleware('api.auth')->group(function () {
 // ── Core resources (auth optional — sets owner when logged in) ─────────────
 Route::middleware('api.auth:optional')->group(function () {
     Route::apiResource('projects', ProjectController::class);
+    Route::patch('projects/{project}/link-permission', [ProjectController::class, 'updateLinkPermission']);
     Route::apiResource('bugs', BugController::class);
     Route::get('bugs-summary', [BugController::class, 'summary']);
     Route::delete('activity-log', [BugController::class, 'clearActivityLog']);
@@ -60,6 +61,7 @@ Route::middleware('api.auth:optional')->group(function () {
 Route::middleware('api.auth:optional')->group(function () {
     Route::apiResource('maintenance/projects', MaintenanceProjectController::class)
         ->parameters(['projects' => 'maintenanceProject']);
+    Route::patch('maintenance/projects/{maintenanceProject}/link-permission', [MaintenanceProjectController::class, 'updateLinkPermission']);
     Route::get('maintenance/projects/{maintenanceProject}/tickets', [MaintenanceTicketController::class, 'index']);
     Route::post('maintenance/projects/{maintenanceProject}/tickets', [MaintenanceTicketController::class, 'store']);
     Route::get('maintenance/projects/{maintenanceProject}/tickets/{maintenanceTicket}', [MaintenanceTicketController::class, 'show']);

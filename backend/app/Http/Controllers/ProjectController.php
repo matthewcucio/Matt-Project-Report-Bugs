@@ -3,21 +3,55 @@
 namespace App\Http\Controllers;
 
 use App\Models\Project;
+use App\Models\ProjectShare;
 use Illuminate\Http\Request;
 
 class ProjectController extends Controller
 {
-    public function index()
+    private function withCounts()
     {
-        $projects = Project::withCount([
+        return Project::withCount([
             'bugs',
             'bugs as pending_count'   => fn($q) => $q->where('status', 'Pending'),
             'bugs as ongoing_count'   => fn($q) => $q->where('status', 'Ongoing'),
             'bugs as completed_count' => fn($q) => $q->where('status', 'Completed'),
             'bugs as critical_count'  => fn($q) => $q->where('priority', 'Critical'),
-        ])->orderBy('created_at', 'asc')->get();
+        ]);
+    }
 
-        return response()->json($projects);
+    private function appendMyPermission(iterable $projects, ?int $userId, ?string $userEmail): iterable
+    {
+        if (!$userId && !$userEmail) {
+            return collect($projects)->map(fn ($p) => tap($p, fn ($p) => $p->my_permission = $p->link_permission ?? 'view'));
+        }
+
+        $projectIds = collect($projects)->pluck('id');
+        $shares = ProjectShare::whereIn('project_id', $projectIds)
+            ->when($userEmail, fn ($q) => $q->where('invited_email', strtolower($userEmail)))
+            ->get()
+            ->keyBy('project_id');
+
+        return collect($projects)->map(function ($p) use ($userId, $shares) {
+            if ($userId && $p->owner_id === $userId) {
+                $p->my_permission = 'owner';
+            } elseif ($share = $shares->get($p->id)) {
+                $p->my_permission = $share->permission === 'editor' ? 'edit' : 'view';
+            } else {
+                // Legacy projects without owner_id
+                $p->my_permission = 'owner';
+            }
+            return $p;
+        });
+    }
+
+    public function index(Request $request)
+    {
+        $projects = $this->withCounts()->orderBy('created_at', 'asc')->get();
+        $user = $request->user();
+
+        return response()->json(
+            $this->appendMyPermission($projects, $user?->id, $user?->email)
+        );
     }
 
     public function store(Request $request)
@@ -34,13 +68,20 @@ class ProjectController extends Controller
         }
 
         $project = Project::create($validated);
+        $fresh = $this->withCounts()->find($project->id);
+        $fresh->my_permission = 'owner';
 
-        return response()->json($project->loadCount('bugs'), 201);
+        return response()->json($fresh, 201);
     }
 
-    public function show(Project $project)
+    public function show(Project $project, Request $request)
     {
-        return response()->json($project->loadCount('bugs'));
+        $fresh = $this->withCounts()->find($project->id);
+        $user = $request->user();
+
+        return response()->json(
+            $this->appendMyPermission(collect([$fresh]), $user?->id, $user?->email)->first()
+        );
     }
 
     public function update(Request $request, Project $project)
@@ -53,8 +94,23 @@ class ProjectController extends Controller
         ]);
 
         $project->update($validated);
+        $fresh = $this->withCounts()->find($project->id);
+        $user = $request->user();
 
-        return response()->json($project->loadCount('bugs'));
+        return response()->json(
+            $this->appendMyPermission(collect([$fresh]), $user?->id, $user?->email)->first()
+        );
+    }
+
+    public function updateLinkPermission(Request $request, Project $project)
+    {
+        $data = $request->validate([
+            'link_permission' => 'required|in:view,edit',
+        ]);
+
+        $project->update(['link_permission' => $data['link_permission']]);
+
+        return response()->json(['link_permission' => $project->link_permission]);
     }
 
     public function destroy(Project $project)

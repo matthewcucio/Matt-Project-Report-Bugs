@@ -122,7 +122,7 @@
         </div>
 
         <!-- Compose -->
-        <div class="mt-compose">
+        <div v-if="canComment" class="mt-compose">
           <textarea
             v-model="newComment"
             class="mt-compose-textarea"
@@ -361,8 +361,9 @@ const posting        = ref(false)
 const currentStatus    = ref('Pending')
 const currentDevStatus = ref('Not Started')
 const activityListEl   = ref(null)
-const myPermission     = ref('owner') // default to owner until we know otherwise
-const canEdit = computed(() => myPermission.value === 'owner' || myPermission.value === 'edit')
+const myPermission  = ref('view')
+const canEdit       = computed(() => myPermission.value === 'owner' || myPermission.value === 'edit')
+const canComment    = computed(() => myPermission.value === 'owner' || myPermission.value === 'edit' || myPermission.value === 'comment')
 
 const statuses = ['Pending', 'In Progress', 'On Hold', 'Completed', 'Cancelled']
 
@@ -465,7 +466,7 @@ const loadTicket = async () => {
         const proj = await $fetch(`${apiBase}/maintenance/projects/${ticket.value.project.id}`, { headers })
         myPermission.value = proj.my_permission ?? 'owner'
       } catch {
-        myPermission.value = 'owner'
+        myPermission.value = 'view'
       }
     }
   } catch (e) {
@@ -476,7 +477,7 @@ const loadTicket = async () => {
 }
 
 const postComment = async () => {
-  if (!newComment.value.trim() || posting.value) return
+  if (!canComment.value || !newComment.value.trim() || posting.value) return
   posting.value = true
   const message = newComment.value.trim()
   newComment.value = ''

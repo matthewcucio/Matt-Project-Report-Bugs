@@ -370,10 +370,9 @@ class MaintenanceTicketController extends Controller
 
     private function sendNotifications(MaintenanceTicket $ticket, MaintenanceProject $project, array $emails): void
     {
-        foreach (array_values($emails) as $index => $email) {
+        foreach (array_values($emails) as $email) {
             try {
-                $delay = $index * 2; // 2-second gap between each email to avoid rate limiting
-                Mail::to($email)->later(now()->addSeconds($delay), new MaintenanceNotificationMail($ticket, $project, $email));
+                Mail::to($email)->send(new MaintenanceNotificationMail($ticket, $project, $email));
             } catch (\Exception $e) {
                 \Log::warning("Failed to send maintenance notification to {$email}: " . $e->getMessage());
             }

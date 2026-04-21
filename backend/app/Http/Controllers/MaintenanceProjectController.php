@@ -23,7 +23,7 @@ class MaintenanceProjectController extends Controller
     private function appendMyPermission(iterable $projects, ?int $userId, ?string $userEmail): iterable
     {
         if (!$userId && !$userEmail) {
-            return collect($projects)->map(fn ($p) => tap($p, fn ($p) => $p->my_permission = 'view'));
+            return collect($projects)->map(fn ($p) => tap($p, fn ($p) => $p->my_permission = $p->link_permission ?? 'view'));
         }
 
         // Load all shares for these projects in one query
@@ -114,6 +114,17 @@ class MaintenanceProjectController extends Controller
         $user = $request->user();
 
         return response()->json($this->appendMyPermission(collect([$fresh]), $user?->id, $user?->email)->first());
+    }
+
+    public function updateLinkPermission(Request $request, MaintenanceProject $maintenanceProject)
+    {
+        $data = $request->validate([
+            'link_permission' => 'required|in:view,comment,edit',
+        ]);
+
+        $maintenanceProject->update(['link_permission' => $data['link_permission']]);
+
+        return response()->json(['link_permission' => $maintenanceProject->link_permission]);
     }
 
     public function destroy(MaintenanceProject $maintenanceProject)

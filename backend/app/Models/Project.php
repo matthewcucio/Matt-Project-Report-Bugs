@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Project extends Model
 {
-    protected $fillable = ['name', 'description', 'color', 'owner_id', 'is_active'];
+    protected $fillable = ['name', 'description', 'color', 'owner_id', 'is_active', 'link_permission'];
 
     protected $casts = ['is_active' => 'boolean'];
 

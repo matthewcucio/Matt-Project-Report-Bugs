@@ -467,36 +467,36 @@
                       </div>
                       <div class="pc2-name-block">
                         <h3 class="pc2-name">{{ p.name }}</h3>
-                        <div style="display:flex;align-items:center;gap:4px;">
-                          <div class="pc2-date">
-                            <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                            <span v-if="p.contract_start || p.contract_end">{{ p.contract_start ? p.contract_start.slice(0,10) : '?' }} → {{ p.contract_end ? p.contract_end.slice(0,10) : '?' }}</span>
-                            <span v-else style="font-style:italic;">No contract set</span>
-                          </div>
-                          <div class="pc2-actions" @click.stop>
-                            <div class="proj-menu-wrap">
-                              <button class="btn btn-icon proj-menu-btn" @click="openProjectMenuId = openProjectMenuId === p.id ? null : p.id" title="Project actions">
-                                <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+                        <div class="pc2-date">
+                          <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                          <span v-if="p.contract_start || p.contract_end">{{ p.contract_start ? p.contract_start.slice(0,10) : '?' }} → {{ p.contract_end ? p.contract_end.slice(0,10) : '?' }}</span>
+                          <span v-else style="font-style:italic;">No contract set</span>
+                        </div>
+                      </div>
+                      <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+                        <span class="pc2-badge pc2-badge-active">ACTIVE</span>
+                        <div class="pc2-actions" @click.stop>
+                          <div class="proj-menu-wrap">
+                            <button class="btn btn-icon proj-menu-btn" @click="openProjectMenuId = openProjectMenuId === p.id ? null : p.id" title="Project actions">
+                              <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+                            </button>
+                            <div v-if="openProjectMenuId === p.id" class="proj-menu-dropdown">
+                              <button v-if="p.my_permission === 'owner'" class="proj-menu-item" @click="openProjectModal(p); openProjectMenuId = null">
+                                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                Edit
                               </button>
-                              <div v-if="openProjectMenuId === p.id" class="proj-menu-dropdown">
-                                <button v-if="p.my_permission === 'owner'" class="proj-menu-item" @click="openProjectModal(p); openProjectMenuId = null">
-                                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                  Edit
-                                </button>
-                                <button v-if="p.my_permission === 'owner'" class="proj-menu-item proj-menu-item-share" @click="openShareModal(p); openProjectMenuId = null">
-                                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-                                  Share
-                                </button>
-                                <button v-if="p.my_permission === 'owner'" class="proj-menu-item proj-menu-item-delete" @click="confirmDeleteProject(p); openProjectMenuId = null">
-                                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                                  Delete
-                                </button>
-                              </div>
+                              <button v-if="p.my_permission === 'owner'" class="proj-menu-item proj-menu-item-share" @click="openShareModal(p); openProjectMenuId = null">
+                                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                                Share
+                              </button>
+                              <button v-if="p.my_permission === 'owner'" class="proj-menu-item proj-menu-item-delete" @click="confirmDeleteProject(p); openProjectMenuId = null">
+                                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                                Delete
+                              </button>
                             </div>
                           </div>
                         </div>
                       </div>
-                      <span class="pc2-badge pc2-badge-active">ACTIVE</span>
                     </div>
                     <p v-if="p.description" class="pc2-desc">{{ p.description }}</p>
                     <div class="pc2-stats-row">
@@ -544,36 +544,36 @@
                       </div>
                       <div class="pc2-name-block">
                         <h3 class="pc2-name" style="color:var(--gray-500);">{{ p.name }}</h3>
-                        <div style="display:flex;align-items:center;gap:4px;">
-                          <div class="pc2-date">
-                            <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                            <span v-if="p.contract_start || p.contract_end">{{ p.contract_start ? p.contract_start.slice(0,10) : '?' }} → {{ p.contract_end ? p.contract_end.slice(0,10) : '?' }}</span>
-                            <span v-else style="font-style:italic;">No contract set</span>
-                          </div>
-                          <div class="pc2-actions" @click.stop>
-                            <div class="proj-menu-wrap">
-                              <button class="btn btn-icon proj-menu-btn" @click="openProjectMenuId = openProjectMenuId === p.id ? null : p.id" title="Project actions">
-                                <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+                        <div class="pc2-date">
+                          <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                          <span v-if="p.contract_start || p.contract_end">{{ p.contract_start ? p.contract_start.slice(0,10) : '?' }} → {{ p.contract_end ? p.contract_end.slice(0,10) : '?' }}</span>
+                          <span v-else style="font-style:italic;">No contract set</span>
+                        </div>
+                      </div>
+                      <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+                        <span class="pc2-badge pc2-badge-inactive">INACTIVE</span>
+                        <div class="pc2-actions" @click.stop>
+                          <div class="proj-menu-wrap">
+                            <button class="btn btn-icon proj-menu-btn" @click="openProjectMenuId = openProjectMenuId === p.id ? null : p.id" title="Project actions">
+                              <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+                            </button>
+                            <div v-if="openProjectMenuId === p.id" class="proj-menu-dropdown">
+                              <button v-if="p.my_permission === 'owner'" class="proj-menu-item" @click="openProjectModal(p); openProjectMenuId = null">
+                                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                Edit
                               </button>
-                              <div v-if="openProjectMenuId === p.id" class="proj-menu-dropdown">
-                                <button v-if="p.my_permission === 'owner'" class="proj-menu-item" @click="openProjectModal(p); openProjectMenuId = null">
-                                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                  Edit
-                                </button>
-                                <button v-if="p.my_permission === 'owner'" class="proj-menu-item proj-menu-item-share" @click="openShareModal(p); openProjectMenuId = null">
-                                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-                                  Share
-                                </button>
-                                <button v-if="p.my_permission === 'owner'" class="proj-menu-item proj-menu-item-delete" @click="confirmDeleteProject(p); openProjectMenuId = null">
-                                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                                  Delete
-                                </button>
-                              </div>
+                              <button v-if="p.my_permission === 'owner'" class="proj-menu-item proj-menu-item-share" @click="openShareModal(p); openProjectMenuId = null">
+                                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                                Share
+                              </button>
+                              <button v-if="p.my_permission === 'owner'" class="proj-menu-item proj-menu-item-delete" @click="confirmDeleteProject(p); openProjectMenuId = null">
+                                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                                Delete
+                              </button>
                             </div>
                           </div>
                         </div>
                       </div>
-                      <span class="pc2-badge pc2-badge-inactive">INACTIVE</span>
                     </div>
                     <p v-if="p.description" class="pc2-desc">{{ p.description }}</p>
                     <div class="pc2-stats-row">
@@ -1043,7 +1043,7 @@
             </div>
             <div style="display:flex;align-items:center;gap:6px;">
               <!-- Mode toggle -->
-              <button v-if="ticketModalMode === 'view'" class="btn btn-ghost btn-sm" style="gap:5px;" @click="ticketModalMode = 'edit'; initEditForm()">
+              <button v-if="ticketModalMode === 'view' && canManageTickets" class="btn btn-ghost btn-sm" style="gap:5px;" @click="ticketModalMode = 'edit'; initEditForm()">
                 <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 Edit
               </button>
@@ -1185,7 +1185,7 @@
               </div>
               <div v-else class="bug-view-empty" style="margin-top:6px;">No comments yet.</div>
               <!-- Inline compose -->
-              <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px;">
+              <div v-if="canComment" style="margin-top:12px;display:flex;flex-direction:column;gap:8px;">
                 <textarea
                   v-model="mtNewMessage"
                   class="form-control"
@@ -1482,8 +1482,8 @@
                   <option value="comment">Can comment</option>
                   <option value="edit">Can edit</option>
                 </select>
-                <button class="btn btn-primary btn-sm share-send-btn" :disabled="!shareEmail.trim()" @click="addShareInvite">
-                  Invite
+                <button class="btn btn-primary btn-sm share-send-btn" :disabled="!shareEmail.trim() || shareSubmitting" @click="addShareInvite">
+                  {{ shareSubmitting ? '…' : 'Invite' }}
                 </button>
               </div>
             </div>
@@ -1532,7 +1532,7 @@
                 <span class="share-link-title">Anyone with the link</span>
               </div>
               <div class="share-link-controls">
-                <select v-model="shareLinkPermission" class="share-perm-select" style="flex:1;">
+                <select v-model="shareLinkPermission" class="share-perm-select" style="flex:1;" @change="saveLinkPermission($event.target.value)">
                   <option value="view">Can view</option>
                   <option value="comment">Can comment</option>
                   <option value="edit">Can edit</option>
@@ -1546,10 +1546,7 @@
             </div>
           </div>
           <div class="modal-footer">
-            <button class="btn btn-secondary" :disabled="shareSubmitting" @click="showShareModal = false">Cancel</button>
-            <button class="btn btn-primary" :disabled="!shareInvites.length || shareSubmitting" @click="submitShare">
-              {{ shareSubmitting ? 'Sending…' : 'Send invites' }}
-            </button>
+            <button class="btn btn-primary" @click="showShareModal = false">Done</button>
           </div>
         </div>
       </div>
@@ -1595,7 +1592,7 @@
                       <span class="thread-msg-avatar">{{ (msg.author || '?')[0].toUpperCase() }}</span>
                       <span class="thread-msg-author-name">{{ msg.author || 'Anonymous' }}</span>
                       <span class="thread-msg-time-inline">{{ formatThreadTime(msg.timestamp) }}{{ msg.edited ? ' · edited' : '' }}</span>
-                      <div class="thread-msg-menu-wrap" style="margin-left:auto;">
+                      <div v-if="canManageTickets" class="thread-msg-menu-wrap" style="margin-left:auto;">
                         <button class="thread-ellipsis-btn" @click.stop="mtOpenMenuIdx = (mtOpenMenuIdx === i ? null : i)">⋯</button>
                         <div v-if="mtOpenMenuIdx === i" class="thread-dropdown" @click.stop>
                           <button class="thread-dropdown-item" @click="startMtEditMsg(i, msg.message); mtOpenMenuIdx = null">
@@ -1626,7 +1623,7 @@
               </div>
             </div>
           </div>
-          <div class="thread-input-area">
+          <div v-if="canComment" class="thread-input-area">
             <input
               v-model="mtNewAuthor"
               class="thread-author-input"
@@ -1766,9 +1763,10 @@ let toastTimer = null
 // my_permission values: 'owner' | 'edit' | 'comment' | 'view'
 // canManageProject: edit/delete/share the project itself → owner only
 // canManageTickets: create/edit/delete tickets → owner or editor
-const myPermission     = computed(() => selectedProject.value?.my_permission ?? 'owner')
+const myPermission     = computed(() => selectedProject.value?.my_permission ?? 'view')
 const canManageProject = computed(() => myPermission.value === 'owner')
 const canManageTickets = computed(() => myPermission.value === 'owner' || myPermission.value === 'edit')
+const canComment       = computed(() => myPermission.value === 'owner' || myPermission.value === 'edit' || myPermission.value === 'comment')
 
 const sentThruOptions = ['Email', 'Slack', 'Phone', 'Teams', 'Viber', 'In-person', 'Other']
 
@@ -2233,28 +2231,54 @@ const openShareModal = async (p) => {
   sharingProject.value = p
   shareEmail.value = ''
   sharePermission.value = 'view'
-  shareLinkPermission.value = 'view'
+  shareLinkPermission.value = p.link_permission || 'view'
   shareInvites.value = []
   shareCopied.value = false
   existingShares.value = []
   showShareModal.value = true
-  // Load current shares
   try {
     const data = await apiFetch(`${config.public.apiBase}/maintenance/projects/${p.id}/shares`)
     existingShares.value = data || []
   } catch {}
 }
 
-const addShareInvite = () => {
+const saveLinkPermission = async (permission) => {
+  if (!sharingProject.value) return
+  try {
+    await apiFetch(
+      `${config.public.apiBase}/maintenance/projects/${sharingProject.value.id}/link-permission`,
+      { method: 'PATCH', body: { link_permission: permission } }
+    )
+    const proj = projects.value.find(p => p.id === sharingProject.value.id)
+    if (proj) proj.link_permission = permission
+    sharingProject.value.link_permission = permission
+    showToast('Link permission updated')
+  } catch { showToast('Failed to update link permission', 'error') }
+}
+
+const addShareInvite = async () => {
   const email = shareEmail.value.trim()
   if (!email) return
-  // Prevent duplicates in the pending list
-  if (shareInvites.value.some(i => i.email.toLowerCase() === email.toLowerCase())) {
-    shareEmail.value = ''
-    return
-  }
-  shareInvites.value.push({ email, permission: sharePermission.value })
   shareEmail.value = ''
+  shareSubmitting.value = true
+  try {
+    const res = await apiFetch(
+      `${config.public.apiBase}/maintenance/projects/${sharingProject.value.id}/shares`,
+      { method: 'POST', body: { invites: [{ email, permission: sharePermission.value }] } }
+    )
+    if (res.shares?.length) {
+      const newShare = res.shares[0]
+      const idx = existingShares.value.findIndex(s => s.email === newShare.email)
+      if (idx >= 0) existingShares.value[idx] = newShare
+      else existingShares.value.push(newShare)
+    }
+    const wasSent = res.emailed?.includes(email)
+    showToast(wasSent ? `Invite sent to ${email}` : `${email} added`)
+  } catch {
+    showToast('Failed to send invite', 'error')
+  } finally {
+    shareSubmitting.value = false
+  }
 }
 
 const copyShareLink = () => {
@@ -2529,6 +2553,7 @@ const openMtThread = (ticket) => {
 }
 
 const addMtComment = async () => {
+  if (!canComment.value) return
   if (!mtNewMessage.value.trim() || !mtNewAuthor.value.trim() || mtThreadSending.value || !mtThreadTicket.value) return
   mtThreadSending.value = true
   const message = mtNewMessage.value.trim()
@@ -2553,7 +2578,7 @@ const startMtEditMsg  = (idx, text) => { mtEditingMsgIndex.value = idx; mtEditin
 const cancelMtEditMsg = () => { mtEditingMsgIndex.value = null; mtEditingMsgValue.value = '' }
 
 const saveMtEditMsg = async (idx) => {
-  if (!mtEditingMsgValue.value.trim() || !mtThreadTicket.value) return
+  if (!canManageTickets.value || !mtEditingMsgValue.value.trim() || !mtThreadTicket.value) return
   const updated = mtThreadTicket.value.comments.map((m, i) =>
     i === idx ? { ...m, message: mtEditingMsgValue.value.trim(), edited: true } : m
   )
@@ -2562,7 +2587,7 @@ const saveMtEditMsg = async (idx) => {
 }
 
 const deleteMtMsg = async (idx) => {
-  if (!mtThreadTicket.value) return
+  if (!canManageTickets.value || !mtThreadTicket.value) return
   const updated = mtThreadTicket.value.comments.filter((_, i) => i !== idx)
   await saveMtComments(updated)
 }
