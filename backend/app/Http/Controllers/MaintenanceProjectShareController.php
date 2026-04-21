@@ -64,7 +64,7 @@ class MaintenanceProjectShareController extends Controller
             $invitedUser = User::where('email', $email)->first();
 
             if ($user && strtolower($user->email) === $email) {
-                continue; // skip self
+                continue;
             }
 
             $share = MaintenanceProjectShare::updateOrCreate(

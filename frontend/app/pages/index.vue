@@ -210,16 +210,24 @@
                       <span v-if="p.critical_count" class="pstat pstat-critical">{{ p.critical_count }} critical</span>
                     </div>
                   </div>
-                  <div class="project-card-actions" @click.stop>
-                    <button class="btn btn-icon action-btn-share" title="Share project" @click="currentUser ? openShareModal(p) : login()">
-                      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                  <div v-if="canEditProject(p)" class="proj-menu-wrap" @click.stop>
+                    <button class="btn btn-icon proj-menu-btn" @click.stop="openProjectMenuId = openProjectMenuId === p.id ? null : p.id">
+                      <svg width="15" height="15" fill="currentColor" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
                     </button>
-                    <button v-if="canEditProject(p)" class="btn btn-icon action-btn-edit" @click="openProjectModal(p)">
-                      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    </button>
-                    <button v-if="canEditProject(p)" class="btn btn-icon action-btn-delete" @click="confirmDeleteProject(p)">
-                      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                    </button>
+                    <div v-if="openProjectMenuId === p.id" class="proj-menu-dropdown" @click.stop>
+                      <button class="proj-menu-item" @click="openProjectModal(p); openProjectMenuId = null">
+                        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        Edit
+                      </button>
+                      <button v-if="isProjectOwner(p)" class="proj-menu-item" @click="currentUser ? openShareModal(p) : login(); openProjectMenuId = null">
+                        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                        Share
+                      </button>
+                      <button class="proj-menu-item proj-menu-item--danger" @click="confirmDeleteProject(p); openProjectMenuId = null">
+                        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -244,13 +252,20 @@
                       <span v-if="p.completed_count" class="pstat pstat-done">{{ p.completed_count }} done</span>
                     </div>
                   </div>
-                  <div class="project-card-actions" @click.stop>
-                    <button v-if="canEditProject(p)" class="btn btn-icon action-btn-edit" @click="openProjectModal(p)">
-                      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  <div v-if="canEditProject(p)" class="proj-menu-wrap" @click.stop>
+                    <button class="btn btn-icon proj-menu-btn" @click.stop="openProjectMenuId = openProjectMenuId === p.id ? null : p.id">
+                      <svg width="15" height="15" fill="currentColor" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
                     </button>
-                    <button v-if="canEditProject(p)" class="btn btn-icon action-btn-delete" @click="confirmDeleteProject(p)">
-                      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                    </button>
+                    <div v-if="openProjectMenuId === p.id" class="proj-menu-dropdown" @click.stop>
+                      <button class="proj-menu-item" @click="openProjectModal(p); openProjectMenuId = null">
+                        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        Edit
+                      </button>
+                      <button class="proj-menu-item proj-menu-item--danger" @click="confirmDeleteProject(p); openProjectMenuId = null">
+                        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2826,21 +2841,18 @@
                   style="flex:1;"
                   @keydown.enter.prevent="inviteUser"
                 />
-                <select v-model="shareForm.permission" class="form-control" style="width:110px;">
-                  <option value="viewer">Viewer</option>
-                  <option value="editor">Editor</option>
+                <select v-model="shareForm.permission" class="share-perm-select">
+                  <option value="viewer">Can view</option>
+                  <option value="editor">Can edit</option>
                 </select>
                 <button class="btn btn-primary" :disabled="!shareForm.email.trim() || shareSubmitting" @click="inviteUser">
                   {{ shareSubmitting ? '…' : 'Invite' }}
                 </button>
               </div>
-              <p style="font-size:12px;color:var(--gray-400);margin-top:6px;">
-                <strong>Viewer</strong> — can view bugs only &nbsp;·&nbsp; <strong>Editor</strong> — can create, edit, and delete bugs
-              </p>
             </div>
 
             <!-- Current shares list -->
-            <div>
+            <div style="margin-bottom:20px;">
               <div class="form-label" style="margin-bottom:10px;">People with access</div>
               <div v-if="sharesLoading" style="color:var(--gray-400);font-size:13px;">Loading…</div>
               <div v-else-if="sharesList.length === 0" style="color:var(--gray-400);font-size:13px;">No one else has access yet.</div>
@@ -2857,18 +2869,35 @@
                   <div style="display:flex;align-items:center;gap:8px;">
                     <select
                       :value="share.permission"
-                      class="form-control"
-                      style="width:100px;font-size:12px;padding:4px 8px;"
+                      class="share-perm-select"
+                      style="flex:1;"
                       @change="updateSharePermission(share, $event.target.value)"
                     >
-                      <option value="viewer">Viewer</option>
-                      <option value="editor">Editor</option>
+                      <option value="viewer">Can view</option>
+                      <option value="editor">Can edit</option>
                     </select>
                     <button class="btn btn-icon action-btn-delete" title="Remove access" @click="removeShare(share.id)">
                       <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
                     </button>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            <!-- Link sharing -->
+            <div class="share-link-section">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                <span style="font-size:13px;font-weight:600;color:var(--gray-700);">Anyone with the link</span>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <select v-model="shareLinkPermission" class="share-perm-select" style="flex:1;" @change="saveLinkPermission($event.target.value)">
+                  <option value="view">Can view</option>
+                  <option value="edit">Can edit</option>
+                </select>
+                <button class="btn btn-secondary" style="white-space:nowrap;" @click="copyShareLink">
+                  {{ shareCopied ? 'Copied!' : 'Copy link' }}
+                </button>
               </div>
             </div>
           </div>
@@ -3318,16 +3347,20 @@ const canEditProject = (project) => {
 const projectShareMap = ref({})
 
 // ── Share modal state ────────────────────────────────────────────────────────
-const showShareModal   = ref(false)
-const sharingProject   = ref(null)
-const sharesList       = ref([])
-const shareForm        = ref({ email: '', permission: 'viewer' })
-const sharesLoading    = ref(false)
-const shareSubmitting  = ref(false)
+const showShareModal      = ref(false)
+const sharingProject      = ref(null)
+const sharesList          = ref([])
+const shareForm           = ref({ email: '', permission: 'viewer' })
+const sharesLoading       = ref(false)
+const shareSubmitting     = ref(false)
+const shareLinkPermission = ref('view')
+const shareCopied         = ref(false)
+const openProjectMenuId   = ref(null)
 
 const openShareModal = async (project) => {
   sharingProject.value = project
   shareForm.value = { email: '', permission: 'viewer' }
+  shareLinkPermission.value = project.link_permission || 'view'
   showShareModal.value = true
   await loadShares()
 }
@@ -3372,6 +3405,29 @@ const removeShare = async (shareId) => {
     await apiFetch(`${config.public.apiBase}/projects/${sharingProject.value.id}/shares/${shareId}`, { method: 'DELETE' })
     sharesList.value = sharesList.value.filter(s => s.id !== shareId)
   } catch { console.error('Failed to remove share') }
+}
+
+const saveLinkPermission = async (permission) => {
+  if (!sharingProject.value) return
+  try {
+    await apiFetch(`${config.public.apiBase}/projects/${sharingProject.value.id}/link-permission`, {
+      method: 'PATCH',
+      body: { link_permission: permission },
+    })
+    const proj = projects.value.find(p => p.id === sharingProject.value.id)
+    if (proj) proj.link_permission = permission
+    sharingProject.value.link_permission = permission
+    showToast('Link permission updated')
+  } catch { showToast('Failed to update link permission', 'error') }
+}
+
+const copyShareLink = () => {
+  if (!sharingProject.value) return
+  const url = `${window.location.origin}/?project=${sharingProject.value.id}`
+  navigator.clipboard.writeText(url).then(() => {
+    shareCopied.value = true
+    setTimeout(() => { shareCopied.value = false }, 2000)
+  })
 }
 
 const priorities    = ['Critical', 'High', 'Medium', 'Low']
