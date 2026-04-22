@@ -8,7 +8,7 @@ class Project extends Model
 {
     protected $fillable = ['name', 'description', 'color', 'owner_id', 'is_active', 'link_permission'];
 
-    protected $casts = ['is_active' => 'boolean'];
+    protected $casts = ['is_active' => 'boolean', 'owner_id' => 'integer'];
 
     public function bugs()
     {

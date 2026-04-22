@@ -70,7 +70,11 @@ class AuthController extends Controller
             );
 
             // Auto-accept any pending shares for this Gmail
-            ProjectShare::where('invited_email', $user->email)
+            ProjectShare::whereRaw('LOWER(invited_email) = ?', [strtolower($user->email)])
+                ->whereNull('user_id')
+                ->update(['user_id' => $user->id, 'accepted_at' => now()]);
+
+            \App\Models\MaintenanceProjectShare::whereRaw('LOWER(invited_email) = ?', [strtolower($user->email)])
                 ->whereNull('user_id')
                 ->update(['user_id' => $user->id, 'accepted_at' => now()]);
 
