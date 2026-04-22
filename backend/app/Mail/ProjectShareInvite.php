@@ -31,7 +31,8 @@ class ProjectShareInvite extends Mailable
     public function content(): Content
     {
         $permission = ucfirst($this->share->permission);
-        $appUrl = config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:3000'));
+        $appUrl    = config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:3000'));
+        $sharedUrl = "{$appUrl}/shared?project={$this->project->id}";
 
         return new Content(
             htmlString: <<<HTML
@@ -45,7 +46,7 @@ class ProjectShareInvite extends Mailable
                   <strong>&ldquo;{$this->project->name}&rdquo;</strong> with you as a
                   <strong>{$permission}</strong>.
                 </p>
-                <a href="{$appUrl}"
+                <a href="{$sharedUrl}"
                    style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;">
                   Open Project
                 </a>

@@ -30,7 +30,7 @@
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
           <!-- Notification Bell -->
-          <div class="notif-bell-wrap" ref="notifDropdownRef" @click.stop="toggleNotifDropdown">
+          <div v-if="!isSharedView" class="notif-bell-wrap" ref="notifDropdownRef" @click.stop="toggleNotifDropdown">
             <button class="notif-bell-btn" :class="{ 'notif-bell-btn--active': notifDropdownOpen }">
               <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -126,34 +126,36 @@
             <span class="sidebar-item-count">{{ p.bugs_count }}</span>
           </button>
         </nav>
-        <div class="sidebar-divider" style="margin:8px 0 4px;"></div>
-        <div class="sidebar-section-label" style="margin-top:4px;">Tools</div>
-        <nav class="sidebar-nav">
-          <button class="sidebar-item" :class="{ active: dashboardOpen }" @click="openDashboard()">
-            <span class="sidebar-item-icon">📊</span>
-            <span class="sidebar-item-name">Dashboard</span>
-          </button>
-          <button class="sidebar-item" :class="{ active: ticketTrackerOpen }" @click="openTicketTracker(); dashboardOpen = false">
-            <span class="sidebar-item-icon">🎫</span>
-            <span class="sidebar-item-name">Ticket Tracker</span>
-            <span v-if="allTickets.length" class="sidebar-item-count">{{ allTickets.length }}</span>
-          </button>
-          <button class="sidebar-item" :class="{ active: devFoldersViewOpen }" @click="openDevFoldersView">
-            <span class="sidebar-item-icon">📁</span>
-            <span class="sidebar-item-name">Dev Folders</span>
-            <span v-if="devFolders.length" class="sidebar-item-count">{{ devFolders.length }}</span>
-          </button>
-          <NuxtLink to="/maintenance" class="sidebar-item" style="text-decoration:none;color:inherit;">
-            <span class="sidebar-item-icon">🔧</span>
-            <span class="sidebar-item-name">Maintenance</span>
-          </NuxtLink>
-        </nav>
-        <div class="sidebar-footer">
-          <button class="btn-new-proj" @click="openProjectModal(null)">
-            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-            New Project
-          </button>
-        </div>
+        <template v-if="!isSharedView">
+          <div class="sidebar-divider" style="margin:8px 0 4px;"></div>
+          <div class="sidebar-section-label" style="margin-top:4px;">Tools</div>
+          <nav class="sidebar-nav">
+            <button class="sidebar-item" :class="{ active: dashboardOpen }" @click="openDashboard()">
+              <span class="sidebar-item-icon">📊</span>
+              <span class="sidebar-item-name">Dashboard</span>
+            </button>
+            <button class="sidebar-item" :class="{ active: ticketTrackerOpen }" @click="openTicketTracker(); dashboardOpen = false">
+              <span class="sidebar-item-icon">🎫</span>
+              <span class="sidebar-item-name">Ticket Tracker</span>
+              <span v-if="allTickets.length" class="sidebar-item-count">{{ allTickets.length }}</span>
+            </button>
+            <button class="sidebar-item" :class="{ active: devFoldersViewOpen }" @click="openDevFoldersView">
+              <span class="sidebar-item-icon">📁</span>
+              <span class="sidebar-item-name">Dev Folders</span>
+              <span v-if="devFolders.length" class="sidebar-item-count">{{ devFolders.length }}</span>
+            </button>
+            <NuxtLink to="/maintenance" class="sidebar-item" style="text-decoration:none;color:inherit;">
+              <span class="sidebar-item-icon">🔧</span>
+              <span class="sidebar-item-name">Maintenance</span>
+            </NuxtLink>
+          </nav>
+          <div class="sidebar-footer">
+            <button class="btn-new-proj" @click="openProjectModal(null)">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+              New Project
+            </button>
+          </div>
+        </template>
       </aside>
 
       <!-- ── Main ── -->
@@ -166,7 +168,7 @@
               <h1 class="view-title">All Projects</h1>
               <p class="view-subtitle">{{ activeProjects.length }} active{{ inactiveProjects.length ? `, ${inactiveProjects.length} inactive` : '' }}</p>
             </div>
-            <button class="btn btn-primary" @click="openProjectModal(null)">
+            <button v-if="!isSharedView" class="btn btn-primary" @click="openProjectModal(null)">
               <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
               New Project
             </button>
@@ -210,7 +212,7 @@
                       <span v-if="p.critical_count" class="pstat pstat-critical">{{ p.critical_count }} critical</span>
                     </div>
                   </div>
-                  <div class="project-card-actions" @click.stop>
+                  <div class="project-card-actions" :class="{ 'menu-open': openProjectMenuId === p.id }" @click.stop>
                     <div class="proj-menu-wrap">
                       <button class="btn btn-icon proj-menu-btn" @click="openProjectMenuId = openProjectMenuId === p.id ? null : p.id" title="Project actions">
                         <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
@@ -254,7 +256,7 @@
                       <span v-if="p.completed_count" class="pstat pstat-done">{{ p.completed_count }} done</span>
                     </div>
                   </div>
-                  <div class="project-card-actions" @click.stop>
+                  <div class="project-card-actions" :class="{ 'menu-open': openProjectMenuId === p.id }" @click.stop>
                     <div class="proj-menu-wrap">
                       <button class="btn btn-icon proj-menu-btn" @click="openProjectMenuId = openProjectMenuId === p.id ? null : p.id" title="Project actions">
                         <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
@@ -1938,9 +1940,9 @@
             <!-- Project header -->
             <div class="view-header">
               <div style="display:flex;align-items:center;gap:12px;">
-                <button class="btn btn-ghost btn-sm" style="gap:4px;" @click="selectProject(null)">
+                <button class="btn btn-ghost btn-sm" style="gap:4px;" @click="isSharedView ? navigateTo('/shared') : selectProject(null)">
                   <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-                  All Projects
+                  {{ isSharedView ? 'My Shared Projects' : 'All Projects' }}
                 </button>
                 <div class="project-view-name">
                   <span class="project-view-dot" :style="{ background: selectedProject.color }"></span>
@@ -2077,7 +2079,7 @@
                         <td><span :class="['badge', priorityBadgeClass(bug.priority)]">{{ bug.priority }}</span></td>
                         <td><span :class="['badge', scenarioBadgeClass(bug.scenario_type)]">{{ bug.scenario_type }}</span></td>
                         <td>
-                          <select :value="bug.status" :class="['status-select', 'status-select--' + bug.status.toLowerCase().replace(/\s+/g,'-')]" @change="updateStatus(bug, $event.target.value)">
+                          <select :value="bug.status" :class="['status-select', 'status-select--' + bug.status.toLowerCase().replace(/\s+/g,'-')]" @change="updateStatus(bug, $event.target.value)" :disabled="!canEditProject(selectedProject)">
                             <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
                           </select>
                         </td>
@@ -2103,7 +2105,8 @@
                           <div class="assign-dev-wrap">
                             <button
                               :class="['assign-dev-btn', { 'assign-dev-btn--assigned': bug.assigned_developers?.length }]"
-                              @click.stop="openAssignDropdown(bug.id)"
+                              @click.stop="canEditProject(selectedProject) && openAssignDropdown(bug.id)"
+                              :disabled="!canEditProject(selectedProject)"
                             >
                               <template v-if="bug.assigned_developers?.length">
                                 <span class="assign-avatars-stack">
@@ -2193,6 +2196,7 @@
                             :value="bug.dev_status || 'Not Started'"
                             :class="['dev-status-select', 'dev-status--' + (bug.dev_status || 'Not Started').toLowerCase().replace(/\s+/g, '-')]"
                             @change="updateDevStatus(bug, $event.target.value)"
+                            :disabled="!canEditProject(selectedProject)"
                           >
                             <option value="Not Started">Not Started</option>
                             <option value="In Progress">In Progress</option>
@@ -2232,6 +2236,7 @@
                           </template>
                           <template v-else-if="bug.dev_status === 'In Progress' && bug.ticket_sent_at">
                             <button
+                              v-if="canEditProject(selectedProject)"
                               class="send-ticket-btn send-ticket-btn--resend-dev"
                               :disabled="!bug.has_assignment"
                               title="Resend ticket to developer"
@@ -2248,6 +2253,7 @@
                                 Sent
                               </span>
                               <button
+                                v-if="canEditProject(selectedProject)"
                                 class="resend-ticket-btn"
                                 title="Resend ticket to developer"
                                 @click="openResendTicketModal(bug)"
@@ -2256,7 +2262,7 @@
                               </button>
                             </div>
                             <button
-                              v-else
+                              v-else-if="canEditProject(selectedProject)"
                               :class="['send-ticket-btn', bug.has_assignment ? 'send-ticket-btn--active' : 'send-ticket-btn--disabled']"
                               :disabled="!bug.has_assignment"
                               :title="!bug.has_assignment ? 'Assign a developer first' : 'Send ticket to developer'"
@@ -2273,10 +2279,10 @@
                             <button class="btn btn-icon action-btn-view" title="View" @click="viewBug(bug)">
                               <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                             </button>
-                            <button class="btn btn-icon action-btn-edit" title="Edit" @click="openEditModal(bug)">
+                            <button v-if="canEditProject(selectedProject)" class="btn btn-icon action-btn-edit" title="Edit" @click="openEditModal(bug)">
                               <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                             </button>
-                            <button class="btn btn-icon action-btn-delete" title="Delete" @click="confirmDelete(bug)">
+                            <button v-if="canEditProject(selectedProject)" class="btn btn-icon action-btn-delete" title="Delete" @click="confirmDelete(bug)">
                               <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
                             </button>
                           </div>
@@ -2560,7 +2566,7 @@
               <h3 class="modal-title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ viewingBugDetail?.title }}</h3>
             </div>
             <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-              <button class="btn btn-sm action-btn-edit" style="gap:5px;" @click="openEditModal(viewingBugDetail); showViewModal = false">
+              <button v-if="canEditProject(selectedProject)" class="btn btn-sm action-btn-edit" style="gap:5px;" @click="openEditModal(viewingBugDetail); showViewModal = false">
                 <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 Edit
               </button>
@@ -2888,22 +2894,6 @@
               </div>
             </div>
 
-            <!-- Link sharing -->
-            <div class="share-link-section">
-              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                <span style="font-size:13px;font-weight:600;color:var(--gray-700);">Anyone with the link</span>
-              </div>
-              <div style="display:flex;gap:8px;align-items:center;">
-                <select v-model="shareLinkPermission" class="share-perm-select" style="flex:1;" @change="saveLinkPermission($event.target.value)">
-                  <option value="view">Can view</option>
-                  <option value="edit">Can edit</option>
-                </select>
-                <button class="btn btn-secondary" style="white-space:nowrap;" @click="copyShareLink">
-                  {{ shareCopied ? 'Copied!' : 'Copy link' }}
-                </button>
-              </div>
-            </div>
           </div>
           <div class="modal-footer">
             <button class="btn btn-secondary" @click="showShareModal = false">Done</button>
@@ -3193,6 +3183,8 @@ const config     = useRuntimeConfig()
 const apiBase    = config.public.apiBase.replace('/api', '')
 const appLoading = useState('appLoading', () => false)
 
+const isSharedView = ref(false)
+
 // ── Auth state ──────────────────────────────────────────────────────────────
 const authToken           = ref(null)
 const currentUser         = ref(null)
@@ -3314,7 +3306,19 @@ onMounted(async () => {
     const stored = localStorage.getItem('auth_token')
     if (stored) authToken.value = stored
   }
-  if (authToken.value) await fetchCurrentUser()
+  if (urlParams.get('from') === 'shared') isSharedView.value = true
+
+  if (authToken.value) {
+    await fetchCurrentUser()
+    await fetchProjects()
+  }
+
+  // Auto-select project from ?project=ID (e.g. from shared invite link)
+  const projectId = urlParams.get('project')
+  if (projectId && projects.value.length) {
+    const found = projects.value.find(p => p.id === Number(projectId))
+    if (found) selectProject(found)
+  }
 
   // Auto-open views from URL params
   const view = urlParams.get('view')
@@ -3351,6 +3355,7 @@ const isProjectOwner = (project) => {
 // Can edit if: no owner (legacy project), or user is owner, or user has editor share
 const canEditProject = (project) => {
   if (!project) return true
+  if (project.my_permission) return ['owner', 'edit'].includes(project.my_permission)
   if (!project.owner_id) return true          // legacy / unowned project
   if (isProjectOwner(project)) return true
   const share = projectShareMap.value[project.id]
@@ -3367,14 +3372,11 @@ const sharesList          = ref([])
 const shareForm           = ref({ email: '', permission: 'viewer' })
 const sharesLoading       = ref(false)
 const shareSubmitting     = ref(false)
-const shareLinkPermission = ref('view')
-const shareCopied         = ref(false)
 const openProjectMenuId   = ref(null)
 
 const openShareModal = async (project) => {
   sharingProject.value = project
   shareForm.value = { email: '', permission: 'viewer' }
-  shareLinkPermission.value = project.link_permission || 'view'
   showShareModal.value = true
   await loadShares()
 }
@@ -3421,28 +3423,6 @@ const removeShare = async (shareId) => {
   } catch { console.error('Failed to remove share') }
 }
 
-const saveLinkPermission = async (permission) => {
-  if (!sharingProject.value) return
-  try {
-    await apiFetch(`${config.public.apiBase}/projects/${sharingProject.value.id}/link-permission`, {
-      method: 'PATCH',
-      body: { link_permission: permission },
-    })
-    const proj = projects.value.find(p => p.id === sharingProject.value.id)
-    if (proj) proj.link_permission = permission
-    sharingProject.value.link_permission = permission
-    showToast('Link permission updated')
-  } catch { showToast('Failed to update link permission', 'error') }
-}
-
-const copyShareLink = () => {
-  if (!sharingProject.value) return
-  const url = `${window.location.origin}/?project=${sharingProject.value.id}`
-  navigator.clipboard.writeText(url).then(() => {
-    shareCopied.value = true
-    setTimeout(() => { shareCopied.value = false }, 2000)
-  })
-}
 
 const priorities    = ['Critical', 'High', 'Medium', 'Low']
 const statuses      = ['Pending', 'Out of Scope', 'Ongoing', 'Completed']
@@ -3744,6 +3724,7 @@ const activeProjects   = computed(() => projects.value.filter(p => p.is_active !
 const inactiveProjects = computed(() => projects.value.filter(p => p.is_active === false))
 
 const filteredProjects = computed(() => projects.value.filter(p => {
+  if (isSharedView.value && p.my_permission === 'owner') return false
   if (projectSearch.value) {
     const q = projectSearch.value.toLowerCase()
     if (!p.name.toLowerCase().includes(q) && !(p.description || '').toLowerCase().includes(q)) return false

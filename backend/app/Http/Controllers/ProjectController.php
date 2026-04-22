@@ -32,7 +32,7 @@ class ProjectController extends Controller
             ->keyBy('project_id');
 
         return collect($projects)->map(function ($p) use ($userId, $shares) {
-            if ($userId && $p->owner_id === $userId) {
+            if ($userId && (int)$p->owner_id === (int)$userId) {
                 $p->my_permission = 'owner';
             } elseif ($share = $shares->get($p->id)) {
                 $p->my_permission = $share->permission === 'editor' ? 'edit' : 'view';

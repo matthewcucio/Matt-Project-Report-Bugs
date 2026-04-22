@@ -470,7 +470,8 @@ body {
   opacity: 0;
   transition: opacity 0.15s;
 }
-.project-card:hover .project-card-actions { opacity: 1; }
+.project-card:hover .project-card-actions,
+.project-card-actions.menu-open { opacity: 1; }
 
 /* ── Project card three-dot menu ────────────────────────────────────────── */
 .proj-menu-wrap {
@@ -1532,12 +1533,6 @@ tbody tr.bug-row-completed .bug-title-main { text-decoration: line-through; colo
   min-width: 90px;
 }
 .share-perm-select:focus { border-color: var(--primary); }
-.share-link-section {
-  padding: 14px 16px;
-  background: var(--gray-50);
-  border: 1px solid var(--gray-200);
-  border-radius: 8px;
-}
 
 /* ── Assign Developer ─────────────────────────────────────────────────────── */
 .assign-dev-wrap { position: relative; }

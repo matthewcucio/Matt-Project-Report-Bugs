@@ -1526,26 +1526,6 @@
               </div>
             </div>
 
-            <!-- Link sharing -->
-            <hr class="share-divider" />
-            <div class="share-link-section">
-              <div class="share-link-label-row">
-                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                <span class="share-link-title">Anyone with the link</span>
-              </div>
-              <div class="share-link-controls">
-                <select v-model="shareLinkPermission" class="share-perm-select" style="flex:1;" @change="saveLinkPermission($event.target.value)">
-                  <option value="view">Can view</option>
-                  <option value="comment">Can comment</option>
-                  <option value="edit">Can edit</option>
-                </select>
-                <button class="btn btn-ghost btn-sm share-copy-btn" @click="copyShareLink">
-                  <svg v-if="!shareCopied" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                  <svg v-else width="13" height="13" fill="none" stroke="#10b981" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-                  {{ shareCopied ? 'Copied!' : 'Copy link' }}
-                </button>
-              </div>
-            </div>
           </div>
           <div class="modal-footer">
             <button class="btn btn-primary" @click="showShareModal = false">Done</button>
@@ -1726,9 +1706,7 @@ const showShareModal         = ref(false)
 const sharingProject      = ref(null)
 const shareEmail          = ref('')
 const sharePermission     = ref('view')
-const shareLinkPermission = ref('view')
 const shareInvites        = ref([])
-const shareCopied         = ref(false)
 
 const activeTicket    = ref(null)
 const ticketModalMode = ref('view') // 'view' | 'edit'
@@ -2237,9 +2215,7 @@ const openShareModal = async (p) => {
   sharingProject.value = p
   shareEmail.value = ''
   sharePermission.value = 'view'
-  shareLinkPermission.value = p.link_permission || 'view'
   shareInvites.value = []
-  shareCopied.value = false
   existingShares.value = []
   showShareModal.value = true
   try {
@@ -2248,19 +2224,6 @@ const openShareModal = async (p) => {
   } catch {}
 }
 
-const saveLinkPermission = async (permission) => {
-  if (!sharingProject.value) return
-  try {
-    await apiFetch(
-      `${config.public.apiBase}/maintenance/projects/${sharingProject.value.id}/link-permission`,
-      { method: 'PATCH', body: { link_permission: permission } }
-    )
-    const proj = projects.value.find(p => p.id === sharingProject.value.id)
-    if (proj) proj.link_permission = permission
-    sharingProject.value.link_permission = permission
-    showToast('Link permission updated')
-  } catch { showToast('Failed to update link permission', 'error') }
-}
 
 const addShareInvite = async () => {
   const email = shareEmail.value.trim()
@@ -2287,12 +2250,6 @@ const addShareInvite = async () => {
   }
 }
 
-const copyShareLink = () => {
-  const url = `${window.location.origin}/maintenance?project=${sharingProject.value?.id}&access=${shareLinkPermission.value}`
-  navigator.clipboard.writeText(url)
-  shareCopied.value = true
-  setTimeout(() => { shareCopied.value = false }, 2000)
-}
 
 const removeExistingShare = async (share) => {
   try {
@@ -3043,35 +3000,6 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 .share-invite-remove:hover { color: #dc2626; background: #fef2f2; }
-.share-divider {
-  border: none;
-  border-top: 1px solid var(--gray-100);
-  margin: 16px 0 14px;
-}
-.share-link-section { display: flex; flex-direction: column; gap: 8px; }
-.share-link-label-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--gray-600);
-}
-.share-link-title {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--gray-700);
-}
-.share-link-controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.share-copy-btn {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
 
 /* Actions column */
 .maint-actions {
