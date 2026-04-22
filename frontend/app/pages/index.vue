@@ -1,4 +1,21 @@
 <template>
+  <!-- Bug Squish Celebration -->
+  <Teleport to="body">
+    <Transition name="squish-fade">
+      <div v-if="showSquishAnim" class="squish-overlay">
+        <div class="squish-scene">
+          <div class="squish-foot">🦶</div>
+          <div class="squish-bug">🐛</div>
+          <div class="squish-splat">💥</div>
+          <div class="squish-stars">
+            <span>⭐</span><span>✨</span><span>⭐</span><span>✨</span><span>⭐</span>
+          </div>
+          <div class="squish-label">Bug Squashed! <span class="squish-check">✓</span></div>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
+
   <div class="app-layout">
 
     <!-- ── Header ── -->
@@ -12,13 +29,8 @@
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
-          <button v-if="selectedProject && !detailView" class="btn btn-primary" @click="openCreateModal">
-            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-            Report Bug
-          </button>
-
           <!-- Notification Bell -->
-          <div class="notif-bell-wrap" ref="notifDropdownRef" @click.stop="toggleNotifDropdown">
+          <div v-if="!isSharedView" class="notif-bell-wrap" ref="notifDropdownRef" @click.stop="toggleNotifDropdown">
             <button class="notif-bell-btn" :class="{ 'notif-bell-btn--active': notifDropdownOpen }">
               <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -49,7 +61,12 @@
                       <div class="notif-item-msg">{{ n.message }}</div>
                       <div class="notif-item-time">{{ timeAgo(n.created_at) }}</div>
                     </div>
-                    <div v-if="!n.read_at" class="notif-item-dot"></div>
+                    <div class="notif-item-right">
+                      <div v-if="!n.read_at" class="notif-item-dot"></div>
+                      <button class="notif-item-dismiss" title="Remove" @click.stop="dismissNotif(n)">
+                        <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -89,57 +106,69 @@
 
       <!-- ── Sidebar ── -->
       <aside class="sidebar">
-        <div class="sidebar-section-label">Projects</div>
+        <div class="sidebar-section-label">DB Projects</div>
         <nav class="sidebar-nav">
-          <button class="sidebar-item" :class="{ active: !selectedProject && !ticketTrackerOpen && !devFoldersViewOpen }" @click="selectProject(null); ticketTrackerOpen = false; devFoldersViewOpen = false">
+          <button class="sidebar-item" :class="{ active: !selectedProject && !ticketTrackerOpen && !dashboardOpen && !devFoldersViewOpen && !inactiveOpen }" @click="selectProject(null); ticketTrackerOpen = false; dashboardOpen = false; devFoldersViewOpen = false; inactiveOpen = false; projectStatusTab = 'all'">
             <span class="sidebar-item-icon">🏠</span>
             <span class="sidebar-item-name">All Projects</span>
-            <span class="sidebar-item-count">{{ projects.length }}</span>
+            <span class="sidebar-item-count">{{ activeProjects.length }}</span>
           </button>
-          <div v-if="projects.length" class="sidebar-divider"></div>
+        </nav>
+        <div v-if="activeProjects.length" class="sidebar-section-label" style="margin-top:10px;">Projects</div>
+        <nav v-if="activeProjects.length" class="sidebar-nav">
           <button
-            v-for="p in projects" :key="p.id"
-            class="sidebar-item" :class="{ active: selectedProject?.id === p.id && !ticketTrackerOpen && !devFoldersViewOpen }"
-            @click="selectProject(p); ticketTrackerOpen = false; devFoldersViewOpen = false"
+            v-for="p in activeProjects" :key="p.id"
+            class="sidebar-item" :class="{ active: selectedProject?.id === p.id && !ticketTrackerOpen && !dashboardOpen && !devFoldersViewOpen }"
+            @click="selectProject(p); ticketTrackerOpen = false; dashboardOpen = false; devFoldersViewOpen = false; inactiveOpen = false"
           >
             <span class="sidebar-color-dot" :style="{ background: p.color }"></span>
             <span class="sidebar-item-name">{{ p.name }}</span>
             <span class="sidebar-item-count">{{ p.bugs_count }}</span>
           </button>
         </nav>
-        <div class="sidebar-divider" style="margin:8px 0 4px;"></div>
-        <div class="sidebar-section-label" style="margin-top:4px;">Tools</div>
-        <nav class="sidebar-nav">
-          <button class="sidebar-item" :class="{ active: ticketTrackerOpen }" @click="openTicketTracker">
-            <span class="sidebar-item-icon">🎫</span>
-            <span class="sidebar-item-name">Ticket Tracker</span>
-            <span v-if="allTickets.length" class="sidebar-item-count">{{ allTickets.length }}</span>
-          </button>
-          <button class="sidebar-item" :class="{ active: devFoldersViewOpen }" @click="openDevFoldersView">
-            <span class="sidebar-item-icon">📁</span>
-            <span class="sidebar-item-name">Dev Folders</span>
-            <span v-if="devFolders.length" class="sidebar-item-count">{{ devFolders.length }}</span>
-          </button>
-        </nav>
-        <div class="sidebar-footer">
-          <button class="btn-new-proj" @click="openProjectModal(null)">
-            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-            New Project
-          </button>
-        </div>
+        <template v-if="!isSharedView">
+          <div class="sidebar-divider" style="margin:8px 0 4px;"></div>
+          <div class="sidebar-section-label" style="margin-top:4px;">Tools</div>
+          <nav class="sidebar-nav">
+            <button class="sidebar-item" :class="{ active: dashboardOpen }" @click="openDashboard()">
+              <span class="sidebar-item-icon">📊</span>
+              <span class="sidebar-item-name">Dashboard</span>
+            </button>
+            <button class="sidebar-item" :class="{ active: ticketTrackerOpen }" @click="openTicketTracker(); dashboardOpen = false">
+              <span class="sidebar-item-icon">🎫</span>
+              <span class="sidebar-item-name">Ticket Tracker</span>
+              <span v-if="allTickets.length" class="sidebar-item-count">{{ allTickets.length }}</span>
+            </button>
+            <button class="sidebar-item" :class="{ active: devFoldersViewOpen }" @click="openDevFoldersView">
+              <span class="sidebar-item-icon">📁</span>
+              <span class="sidebar-item-name">Dev Folders</span>
+              <span v-if="devFolders.length" class="sidebar-item-count">{{ devFolders.length }}</span>
+            </button>
+            <NuxtLink to="/maintenance" class="sidebar-item" style="text-decoration:none;color:inherit;">
+              <span class="sidebar-item-icon">🔧</span>
+              <span class="sidebar-item-name">Maintenance</span>
+            </NuxtLink>
+          </nav>
+          <div class="sidebar-footer">
+            <button class="btn-new-proj" @click="openProjectModal(null)">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+              New Project
+            </button>
+          </div>
+        </template>
       </aside>
 
       <!-- ── Main ── -->
       <main class="main-content">
 
         <!-- ══ All Projects view ══ -->
-        <div v-if="!selectedProject && !ticketTrackerOpen && !devFoldersViewOpen">
+        <div v-if="!selectedProject && !ticketTrackerOpen && !dashboardOpen && !devFoldersViewOpen">
           <div class="view-header">
             <div>
               <h1 class="view-title">All Projects</h1>
-              <p class="view-subtitle">{{ filteredProjects.length }} project{{ filteredProjects.length !== 1 ? 's' : '' }}</p>
+              <p class="view-subtitle">{{ activeProjects.length }} active{{ inactiveProjects.length ? `, ${inactiveProjects.length} inactive` : '' }}</p>
             </div>
-            <button class="btn btn-primary" @click="openProjectModal(null)">
+            <button v-if="!isSharedView" class="btn btn-primary" @click="openProjectModal(null)">
               <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
               New Project
             </button>
@@ -150,53 +179,226 @@
               <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
               <input v-model="projectSearch" class="form-control" placeholder="Search projects..." />
             </div>
-            <select v-model="projectFilter" class="form-control">
-              <option value="">All Projects</option>
-              <option value="critical">Critical </option>
-              <option value="pending">Pending </option>
-              <option value="ongoing">Ongoing </option>
-              <option value="completed">Completed</option>
-            </select>
-            <button v-if="projectSearch || projectFilter" class="btn btn-ghost btn-sm" @click="projectSearch = ''; projectFilter = ''">
+            <div class="project-status-tabs">
+              <button :class="['project-status-tab', { active: projectStatusTab === 'all' }]" @click="projectStatusTab = 'all'">All</button>
+              <button :class="['project-status-tab', { active: projectStatusTab === 'active' }]" @click="projectStatusTab = 'active'">Active</button>
+              <button :class="['project-status-tab', { active: projectStatusTab === 'inactive' }]" @click="projectStatusTab = 'inactive'">Inactive</button>
+            </div>
+            <button v-if="projectSearch" class="btn btn-ghost btn-sm" @click="projectSearch = ''; projectFilter = ''">
               <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
               Clear
             </button>
           </div>
 
-          <div v-if="filteredProjects.length > 0" class="projects-grid">
-            <div v-for="p in filteredProjects" :key="p.id" class="project-card" @click="selectProject(p)">
-              <div class="project-card-stripe" :style="{ background: p.color }"></div>
-              <div class="project-card-body">
-                <div class="project-card-icon" :style="{ background: p.color + '22', color: p.color }">📁</div>
-                <h3 class="project-card-name">{{ p.name }}</h3>
-                <p v-if="p.description" class="project-card-desc">{{ p.description }}</p>
-                <div class="project-card-stats">
-                  <span class="pstat pstat-total">{{ p.bugs_count }} bugs</span>
-                  <span v-if="p.pending_count" class="pstat pstat-pending">{{ p.pending_count }} pending</span>
-                  <span v-if="p.ongoing_count" class="pstat pstat-ongoing">{{ p.ongoing_count }} ongoing</span>
-                  <span v-if="p.completed_count" class="pstat pstat-done">{{ p.completed_count }} done</span>
-                  <span v-if="p.critical_count" class="pstat pstat-critical">{{ p.critical_count }} critical</span>
+          <div v-if="projects.length > 0">
+            <!-- Active projects -->
+            <div v-if="filteredActiveProjects.length && projectStatusTab !== 'inactive'">
+              <div style="font-size:11px;font-weight:700;letter-spacing:.8px;color:var(--gray-400);text-transform:uppercase;margin-bottom:10px;">Active</div>
+              <div class="projects-grid" style="margin-bottom:24px;">
+                <div v-for="p in filteredActiveProjects" :key="p.id" class="project-card" @click="selectProject(p)">
+                  <div class="project-card-stripe" :style="{ background: p.color }"></div>
+                  <div class="project-card-body">
+                    <div class="project-card-icon" :style="{ background: p.color + '22', color: p.color }">📁</div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+                      <h3 class="project-card-name" style="margin:0;">{{ p.name }}</h3>
+                      <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:.4px;background:#e0e7ff;color:#4338ca;">ACTIVE</span>
+                    </div>
+                    <p v-if="p.description" class="project-card-desc">{{ p.description }}</p>
+                    <div class="project-card-stats">
+                      <span class="pstat pstat-total">{{ p.bugs_count }} bugs</span>
+                      <span v-if="p.pending_count" class="pstat pstat-pending">{{ p.pending_count }} pending</span>
+                      <span v-if="p.ongoing_count" class="pstat pstat-ongoing">{{ p.ongoing_count }} ongoing</span>
+                      <span v-if="p.completed_count" class="pstat pstat-done">{{ p.completed_count }} done</span>
+                      <span v-if="p.critical_count" class="pstat pstat-critical">{{ p.critical_count }} critical</span>
+                    </div>
+                  </div>
+                  <div class="project-card-actions" :class="{ 'menu-open': openProjectMenuId === p.id }" @click.stop>
+                    <div class="proj-menu-wrap">
+                      <button class="btn btn-icon proj-menu-btn" @click="openProjectMenuId = openProjectMenuId === p.id ? null : p.id" title="Project actions">
+                        <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+                      </button>
+                      <div v-if="openProjectMenuId === p.id" class="proj-menu-dropdown">
+                        <button v-if="p.my_permission === 'owner'" class="proj-menu-item" @click="openProjectModal(p); openProjectMenuId = null">
+                          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                          Edit
+                        </button>
+                        <button v-if="p.my_permission === 'owner'" class="proj-menu-item proj-menu-item-share" @click="currentUser ? openShareModal(p) : login(); openProjectMenuId = null">
+                          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                          Share
+                        </button>
+                        <button v-if="p.my_permission === 'owner'" class="proj-menu-item proj-menu-item-delete" @click="confirmDeleteProject(p); openProjectMenuId = null">
+                          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div class="project-card-actions" @click.stop>
-                <button class="btn btn-icon action-btn-share" title="Share project" @click="currentUser ? openShareModal(p) : login()">
-                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-                </button>
-                <button v-if="canEditProject(p)" class="btn btn-icon action-btn-edit" @click="openProjectModal(p)">
-                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                </button>
-                <button v-if="canEditProject(p)" class="btn btn-icon action-btn-delete" @click="confirmDeleteProject(p)">
-                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                </button>
+            </div>
+
+            <!-- Inactive projects -->
+            <div v-if="filteredInactiveProjects.length && projectStatusTab !== 'active'">
+              <div style="font-size:11px;font-weight:700;letter-spacing:.8px;color:var(--gray-400);text-transform:uppercase;margin-bottom:10px;">Inactive</div>
+              <div class="projects-grid">
+                <div v-for="p in filteredInactiveProjects" :key="p.id" class="project-card" style="opacity:.75;" @click="selectProject(p)">
+                  <div class="project-card-stripe" :style="{ background: '#d1d5db' }"></div>
+                  <div class="project-card-body">
+                    <div class="project-card-icon" style="background:#f3f4f6;color:#9ca3af;">📁</div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+                      <h3 class="project-card-name" style="margin:0;color:var(--gray-500);">{{ p.name }}</h3>
+                      <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:.4px;background:#fee2e2;color:#dc2626;">INACTIVE</span>
+                    </div>
+                    <p v-if="p.description" class="project-card-desc">{{ p.description }}</p>
+                    <div class="project-card-stats">
+                      <span class="pstat pstat-total">{{ p.bugs_count }} bugs</span>
+                      <span v-if="p.pending_count" class="pstat pstat-pending">{{ p.pending_count }} pending</span>
+                      <span v-if="p.completed_count" class="pstat pstat-done">{{ p.completed_count }} done</span>
+                    </div>
+                  </div>
+                  <div class="project-card-actions" :class="{ 'menu-open': openProjectMenuId === p.id }" @click.stop>
+                    <div class="proj-menu-wrap">
+                      <button class="btn btn-icon proj-menu-btn" @click="openProjectMenuId = openProjectMenuId === p.id ? null : p.id" title="Project actions">
+                        <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+                      </button>
+                      <div v-if="openProjectMenuId === p.id" class="proj-menu-dropdown">
+                        <button v-if="p.my_permission === 'owner'" class="proj-menu-item" @click="openProjectModal(p); openProjectMenuId = null">
+                          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                          Edit
+                        </button>
+                        <button v-if="p.my_permission === 'owner'" class="proj-menu-item proj-menu-item-delete" @click="confirmDeleteProject(p); openProjectMenuId = null">
+                          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
           <div v-else class="empty-state" style="margin-top:60px;">
-            <div class="empty-state-icon">{{ projects.length ? '🔍' : '📁' }}</div>
-            <div class="empty-state-title">{{ projects.length ? 'No matching projects' : 'No projects yet' }}</div>
-            <div class="empty-state-text">{{ projects.length ? 'Try adjusting your search or filter' : 'Create your first project to start tracking bugs' }}</div>
-            <button v-if="!projects.length" class="btn btn-primary" style="margin-top:20px;" @click="openProjectModal(null)">+ Create Project</button>
+            <div class="empty-state-icon">📁</div>
+            <div class="empty-state-title">No projects yet</div>
+            <div class="empty-state-text">Create your first project to start tracking bugs</div>
+            <button class="btn btn-primary" style="margin-top:20px;" @click="openProjectModal(null)">+ Create Project</button>
+          </div>
+        </div>
+
+
+        <!-- ══ Dashboard view ══ -->
+        <div v-else-if="dashboardOpen" :key="dashboardKey">
+          <div class="view-header" style="margin-bottom:24px;">
+            <div>
+              <h1 class="view-title">Dashboard</h1>
+              <p class="view-subtitle">Overall QA metrics across all projects</p>
+            </div>
+          </div>
+
+          <!-- Stat cards -->
+          <div class="dash-grid" style="margin-bottom:20px;">
+            <div class="dash-card dash-card-projects">
+              <div class="dash-card-icon">📁</div>
+              <div class="dash-card-body">
+                <div class="dash-card-value">{{ overallStats.totalProjects }}</div>
+                <div class="dash-card-label">Total Projects</div>
+              </div>
+            </div>
+            <div class="dash-card dash-card-bugs">
+              <div class="dash-card-icon">🐛</div>
+              <div class="dash-card-body">
+                <div class="dash-card-value">{{ overallStats.total }}</div>
+                <div class="dash-card-label">Total Bugs</div>
+              </div>
+            </div>
+            <div class="dash-card dash-card-critical">
+              <div class="dash-card-icon">🔥</div>
+              <div class="dash-card-body">
+                <div class="dash-card-value">{{ overallStats.critical }}</div>
+                <div class="dash-card-label">Critical</div>
+              </div>
+            </div>
+            <div class="dash-card dash-card-pending">
+              <div class="dash-card-icon">⏳</div>
+              <div class="dash-card-body">
+                <div class="dash-card-value">{{ overallStats.pending }}</div>
+                <div class="dash-card-label">Pending</div>
+              </div>
+            </div>
+            <div class="dash-card dash-card-ongoing">
+              <div class="dash-card-icon">⚡</div>
+              <div class="dash-card-body">
+                <div class="dash-card-value">{{ overallStats.ongoing }}</div>
+                <div class="dash-card-label">Ongoing</div>
+              </div>
+            </div>
+            <div class="dash-card dash-card-done">
+              <div class="dash-card-icon">✅</div>
+              <div class="dash-card-body">
+                <div class="dash-card-value">{{ overallStats.completed }}</div>
+                <div class="dash-card-label">Completed</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Resolution bar + Per-project breakdown -->
+          <div class="dash-two-col">
+
+            <!-- Left: resolution rate -->
+            <div class="dash-panel">
+              <div class="dash-panel-title">Overall Resolution Rate</div>
+              <div class="dash-rate-circle-wrap">
+                <svg viewBox="0 0 120 120" class="dash-donut">
+                  <circle cx="60" cy="60" r="50" fill="none" stroke="#f1f5f9" stroke-width="14"/>
+                  <circle cx="60" cy="60" r="50" fill="none" stroke="#22c55e" stroke-width="14"
+                    stroke-dasharray="314"
+                    :stroke-dashoffset="314 - (314 * overallStats.rate / 100)"
+                    stroke-linecap="round"
+                    transform="rotate(-90 60 60)"
+                    style="transition:stroke-dashoffset .5s ease;"
+                  />
+                  <text x="60" y="56" text-anchor="middle" font-size="22" font-weight="800" fill="#1e293b">{{ overallStats.rate }}%</text>
+                  <text x="60" y="72" text-anchor="middle" font-size="10" fill="#94a3b8">resolved</text>
+                </svg>
+              </div>
+              <div class="dash-progress-track" style="margin-top:16px;">
+                <div class="dash-progress-fill dash-fill-done"    :style="{ width: (overallStats.total > 0 ? overallStats.completed / overallStats.total * 100 : 0) + '%' }"></div>
+                <div class="dash-progress-fill dash-fill-ongoing" :style="{ width: (overallStats.total > 0 ? overallStats.ongoing   / overallStats.total * 100 : 0) + '%' }"></div>
+                <div class="dash-progress-fill dash-fill-pending" :style="{ width: (overallStats.total > 0 ? overallStats.pending   / overallStats.total * 100 : 0) + '%' }"></div>
+              </div>
+              <div class="dash-legend" style="margin-top:12px;">
+                <span class="dash-legend-dot" style="background:#22c55e;"></span><span>Completed ({{ overallStats.completed }})</span>
+                <span class="dash-legend-dot" style="background:#3b82f6;"></span><span>Ongoing ({{ overallStats.ongoing }})</span>
+                <span class="dash-legend-dot" style="background:#f59e0b;"></span><span>Pending ({{ overallStats.pending }})</span>
+                <span class="dash-legend-dot" style="background:#ef4444;"></span><span>Critical ({{ overallStats.critical }})</span>
+              </div>
+            </div>
+
+            <!-- Right: per-project breakdown -->
+            <div class="dash-panel">
+              <div class="dash-panel-title">Bugs by Project</div>
+              <div v-if="projects.length === 0" class="dash-empty">No projects yet</div>
+              <div v-else class="dash-project-rows">
+                <div v-for="p in projects" :key="p.id" class="dash-proj-row">
+                  <div class="dash-proj-row-header">
+                    <span class="dash-proj-dot" :style="{ background: p.color }"></span>
+                    <span class="dash-proj-name">{{ p.name }}</span>
+                    <span class="dash-proj-total">{{ p.bugs_count }}</span>
+                  </div>
+                  <div class="dash-proj-bar-track">
+                    <div class="dash-proj-bar-fill" :style="{ width: overallStats.total > 0 ? (p.bugs_count / overallStats.total * 100) + '%' : '0%', background: p.color }"></div>
+                  </div>
+                  <div class="dash-proj-pills">
+                    <span v-if="p.critical_count" class="pstat pstat-critical">{{ p.critical_count }} critical</span>
+                    <span v-if="p.pending_count"  class="pstat pstat-pending">{{ p.pending_count }} pending</span>
+                    <span v-if="p.ongoing_count"  class="pstat pstat-ongoing">{{ p.ongoing_count }} ongoing</span>
+                    <span v-if="p.completed_count" class="pstat pstat-done">{{ p.completed_count }} done</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -505,7 +707,7 @@
               <h1 class="view-title">Ticket Tracker</h1>
               <p class="view-subtitle">Monitor and manage bug tickets across all projects</p>
             </div>
-            <button class="btn btn-ghost btn-sm" @click="fetchAllTickets" title="Refresh">
+            <button class="btn btn-ghost btn-sm" @click="fetchAllTickets(); fetchAllMaintenanceTickets()" title="Refresh">
               <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
               Refresh
             </button>
@@ -529,21 +731,9 @@
               All Tickets
               <span class="tt-tab-chip">{{ allTickets.length }}</span>
             </button>
-            <button :class="['tt-tab', { 'tt-tab--active': ticketTab === 'sent' }]" @click="ticketTab = 'sent'">
-              Sent
-              <span class="tt-tab-chip tt-tab-chip--blue">{{ sentTickets.length }}</span>
-            </button>
-            <button :class="['tt-tab', { 'tt-tab--active': ticketTab === 'resolved' }]" @click="ticketTab = 'resolved'">
-              Resolved
-              <span class="tt-tab-chip tt-tab-chip--green">{{ resolvedTickets.length }}</span>
-            </button>
-            <button :class="['tt-tab', { 'tt-tab--active': ticketTab === 'pending' }]" @click="ticketTab = 'pending'">
-              Pending Action
-              <span v-if="pendingTickets.length" class="tt-tab-chip tt-tab-chip--red">{{ pendingTickets.length }}</span>
-            </button>
-            <button :class="['tt-tab', { 'tt-tab--active': ticketTab === 'overdue' }]" @click="ticketTab = 'overdue'">
-              Overdue
-              <span v-if="overdueTickets.length" class="tt-tab-chip tt-tab-chip--orange">{{ overdueTickets.length }}</span>
+            <button :class="['tt-tab', { 'tt-tab--active': ticketTab === 'maintenance' }]" @click="ticketTab = 'maintenance'">
+              Maintenance
+              <span v-if="allMaintenanceTickets.length" class="tt-tab-chip" style="background:#d1fae5;color:#065f46;">{{ allMaintenanceTickets.length }}</span>
             </button>
           </div>
 
@@ -590,7 +780,7 @@
                   <h3 class="card-title">Ticket Pipeline</h3>
                 </div>
                 <div class="card-body" style="padding:0;">
-                  <table v-if="allTickets.length">
+                  <table v-if="pipelineTickets.length">
                     <thead>
                       <tr>
                         <th style="width:56px;">#</th>
@@ -605,7 +795,7 @@
                       </tr>
                     </thead>
                     <tbody>
-                      <tr v-for="t in allTickets" :key="t.id" class="clickable-row" :class="{ 'tt-overdue-row': isOverdue(t) }" @click="openTTDetail(t)">
+                      <tr v-for="t in pipelineTickets" :key="t.id" class="clickable-row" :class="{ 'tt-overdue-row': isOverdue(t) }" @click="openTTDetail(t)">
                         <td>
                           <div style="display:flex;align-items:center;gap:5px;">
                             <span v-if="isOverdue(t)" class="tt-overdue-dot" title="Overdue"></span>
@@ -645,6 +835,78 @@
                     <div class="empty-state-icon">🎫</div>
                     <div class="empty-state-title">No tickets yet</div>
                     <div class="empty-state-text">Assign developers to bugs to start tracking tickets</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Maintenance Pipeline Table -->
+              <div class="card" style="grid-column:1/-1;">
+                <div class="card-header">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:16px;">🔧</span>
+                    <h3 class="card-title">Maintenance Pipeline</h3>
+                  </div>
+                  <span class="result-chip" style="background:#ecfdf5;color:#065f46;">{{ allMaintenanceTickets.filter(t => t.status !== 'Completed').length }} ticket{{ allMaintenanceTickets.filter(t => t.status !== 'Completed').length !== 1 ? 's' : '' }}</span>
+                </div>
+                <div class="card-body" style="padding:0;">
+                  <table v-if="allMaintenanceTickets.filter(t => t.status !== 'Completed').length">
+                    <thead>
+                      <tr>
+                        <th style="width:80px;">Ticket #</th>
+                        <th style="width:130px;">Project</th>
+                        <th style="width:120px;">Client</th>
+                        <th>Request</th>
+                        <th style="width:90px;">Sent Thru</th>
+                        <th style="width:100px;">Target</th>
+                        <th style="width:130px;">Dev(s)</th>
+                        <th style="width:120px;">Dev Status</th>
+                        <th style="width:110px;">Status</th>
+                        <th style="width:65px;">Age</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="t in allMaintenanceTickets.filter(t => t.status !== 'Completed')" :key="'mto-' + t.id"
+                          class="clickable-row"
+                          :class="{ 'tt-overdue-row': mtIsOverdue(t) }"
+                          @click="navigateTo(`/maintenance-ticket/${t.id}?from=dashboard`)">
+                        <td>
+                          <span class="bug-seq" style="font-size:11px;background:#ecfdf5;color:#059669;">{{ t.ticket_number }}</span>
+                        </td>
+                        <td>
+                          <span v-if="t._project" style="display:flex;align-items:center;gap:6px;font-size:12px;">
+                            <span style="width:7px;height:7px;border-radius:50%;flex-shrink:0;" :style="{ background: t._project.color || '#10b981' }"></span>
+                            {{ t._project.name }}
+                          </span>
+                        </td>
+                        <td><span style="font-weight:600;font-size:13px;color:var(--gray-800);">{{ t.client }}</span></td>
+                        <td>
+                          <div style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;" :title="t.request">{{ t.request }}</div>
+                        </td>
+                        <td><span style="display:inline-flex;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;">{{ t.sent_thru }}</span></td>
+                        <td>
+                          <span style="font-size:12px;" :style="{ color: mtIsOverdue(t) ? '#ef4444' : 'var(--gray-600)', fontWeight: mtIsOverdue(t) ? '600' : '400' }">
+                            {{ t.target_date ? t.target_date.slice(0, 10) : '—' }}
+                          </span>
+                        </td>
+                        <td>
+                          <div style="display:flex;gap:3px;flex-wrap:wrap;">
+                            <span v-for="email in (t.assigned_devs || [])" :key="email" :title="email"
+                              style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:700;flex-shrink:0;">
+                              {{ mtEmailInitials(email) }}
+                            </span>
+                            <span v-if="!t.assigned_devs?.length" style="font-size:11px;color:var(--gray-400);">—</span>
+                          </div>
+                        </td>
+                        <td><span :class="['tt-dev-status-badge', 'tt-dev-status--' + (t.dev_status || 'Not Started').toLowerCase().replace(/\s+/g, '-')]">{{ t.dev_status || 'Not Started' }}</span></td>
+                        <td><span :class="['badge', mtStatusBadgeClass(t.status)]">{{ t.status }}</span></td>
+                        <td><span :class="['age-badge', mtAgeBadgeClass(t)]">{{ mtAgeDays(t) }}d</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <div v-else class="empty-state" style="padding:32px;">
+                    <div class="empty-state-icon">🔧</div>
+                    <div class="empty-state-title">No maintenance tickets</div>
+                    <div class="empty-state-text">Maintenance tickets will appear here once created</div>
                   </div>
                 </div>
               </div>
@@ -695,7 +957,13 @@
 
               <!-- Recent Activity -->
               <div class="card" style="grid-column:1/-1;">
-                <div class="card-header"><h3 class="card-title">Recent Activity</h3></div>
+                <div class="card-header">
+                  <h3 class="card-title">Recent Activity</h3>
+                  <button v-if="recentActivity.length" class="btn btn-ghost btn-sm" @click="clearActivityLog">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                    Clear
+                  </button>
+                </div>
                 <div class="card-body" style="padding:0 20px;">
                   <div v-if="!recentActivity.length" class="empty-state" style="padding:32px;"><div class="empty-state-title">No activity yet</div></div>
                   <div v-for="(entry, i) in recentActivity" :key="i" class="tt-activity-row">
@@ -727,6 +995,7 @@
                   <button :class="['tt-pill', { 'tt-pill--active': ttFilterPill === 'in-progress' }]" @click="ttFilterPill = 'in-progress'">In Progress <span class="tt-pill-count">{{ inProgressTickets.length }}</span></button>
                   <button :class="['tt-pill', { 'tt-pill--active': ttFilterPill === 'resolved' }]" @click="ttFilterPill = 'resolved'">Resolved <span class="tt-pill-count tt-pill-count--green">{{ resolvedTickets.length }}</span></button>
                   <button :class="['tt-pill', { 'tt-pill--active': ttFilterPill === 'overdue' }]" @click="ttFilterPill = 'overdue'">Overdue <span v-if="overdueTickets.length" class="tt-pill-count tt-pill-count--red">{{ overdueTickets.length }}</span></button>
+                  <button :class="['tt-pill', { 'tt-pill--active': ttFilterPill === 'sent' }]" @click="ttFilterPill = 'sent'">Sent <span class="tt-pill-count tt-pill-count--blue">{{ sentTickets.length }}</span></button>
                 </div>
                 <!-- Dropdown filters -->
                 <div class="filters-bar">
@@ -1067,6 +1336,103 @@
             </template>
           </div>
 
+          <!-- ── Maintenance Tab ── -->
+          <div v-else-if="ticketTab === 'maintenance'">
+            <div class="card">
+              <div class="card-header">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span class="sidebar-item-icon" style="font-size:16px;">🔧</span>
+                  <h3 class="card-title">Maintenance Tickets</h3>
+                </div>
+                <span class="result-chip">{{ filteredMtTickets.length }} ticket{{ filteredMtTickets.length !== 1 ? 's' : '' }}</span>
+              </div>
+              <div class="card-body">
+                <!-- Status pills -->
+                <div class="tt-pill-bar">
+                  <button :class="['tt-pill', { 'tt-pill--active': mtStatusPill === 'all' }]" @click="mtStatusPill = 'all'">All <span class="tt-pill-count">{{ allMaintenanceTickets.length }}</span></button>
+                  <button :class="['tt-pill', { 'tt-pill--active': mtStatusPill === 'pending' }]" @click="mtStatusPill = 'pending'">Pending <span class="tt-pill-count">{{ allMaintenanceTickets.filter(t => t.status === 'Pending').length }}</span></button>
+                  <button :class="['tt-pill', { 'tt-pill--active': mtStatusPill === 'in-progress' }]" @click="mtStatusPill = 'in-progress'">In Progress <span class="tt-pill-count">{{ allMaintenanceTickets.filter(t => t.status === 'In Progress').length }}</span></button>
+                  <button :class="['tt-pill', { 'tt-pill--active': mtStatusPill === 'on-hold' }]" @click="mtStatusPill = 'on-hold'">On Hold <span class="tt-pill-count">{{ allMaintenanceTickets.filter(t => t.status === 'On Hold').length }}</span></button>
+                  <button :class="['tt-pill', { 'tt-pill--active': mtStatusPill === 'completed' }]" @click="mtStatusPill = 'completed'">Completed <span class="tt-pill-count tt-pill-count--green">{{ allMaintenanceTickets.filter(t => t.status === 'Completed').length }}</span></button>
+                  <button :class="['tt-pill', { 'tt-pill--active': mtStatusPill === 'overdue' }]" @click="mtStatusPill = 'overdue'">Overdue <span v-if="allMaintenanceTickets.filter(mtIsOverdue).length" class="tt-pill-count tt-pill-count--red">{{ allMaintenanceTickets.filter(mtIsOverdue).length }}</span></button>
+                </div>
+                <!-- Search bar -->
+                <div class="filters-bar" style="margin-bottom:0;">
+                  <div class="search-input-wrap">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                    <input v-model="mtSearch" class="form-control" placeholder="Search by title, assignee, or ticket #..." />
+                  </div>
+                  <button v-if="mtSearch || mtStatusPill !== 'all'" class="btn btn-ghost btn-sm" @click="mtSearch = ''; mtStatusPill = 'all'">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                    Clear
+                  </button>
+                </div>
+              </div>
+              <div style="padding:0 0 0 0;">
+                <table v-if="filteredMtTickets.length">
+                  <thead>
+                    <tr>
+                      <th style="width:80px;">Ticket #</th>
+                      <th style="width:120px;">Project</th>
+                      <th style="width:120px;">Client</th>
+                      <th>Request</th>
+                      <th style="width:90px;">Sent Thru</th>
+                      <th style="width:100px;">Target</th>
+                      <th style="width:130px;">Dev(s)</th>
+                      <th style="width:120px;">Dev Status</th>
+                      <th style="width:110px;">Status</th>
+                      <th style="width:65px;">Age</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="t in filteredMtTickets" :key="'mt-' + t.id"
+                        class="clickable-row"
+                        :class="{ 'tt-overdue-row': mtIsOverdue(t) }"
+                        @click="navigateTo(`/maintenance-ticket/${t.id}?from=dashboard`)">
+                      <td>
+                        <span class="bug-seq" style="font-size:11px;background:#ecfdf5;color:#059669;">{{ t.ticket_number }}</span>
+                      </td>
+                      <td>
+                        <span v-if="t._project" style="display:flex;align-items:center;gap:6px;font-size:12px;">
+                          <span style="width:7px;height:7px;border-radius:50%;flex-shrink:0;" :style="{ background: t._project.color || '#10b981' }"></span>
+                          {{ t._project.name }}
+                        </span>
+                      </td>
+                      <td><span style="font-weight:600;font-size:13px;color:var(--gray-800);">{{ t.client }}</span></td>
+                      <td>
+                        <div style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;" :title="t.request">{{ t.request }}</div>
+                      </td>
+                      <td><span style="display:inline-flex;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;">{{ t.sent_thru }}</span></td>
+                      <td>
+                        <span style="font-size:12px;" :style="{ color: mtIsOverdue(t) ? '#ef4444' : 'var(--gray-600)', fontWeight: mtIsOverdue(t) ? '600' : '400' }">
+                          {{ t.target_date ? t.target_date.slice(0, 10) : '—' }}
+                        </span>
+                      </td>
+                      <td>
+                        <div style="display:flex;gap:3px;flex-wrap:wrap;">
+                          <span v-for="email in (t.assigned_devs || [])" :key="email" :title="email"
+                            style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:700;flex-shrink:0;">
+                            {{ mtEmailInitials(email) }}
+                          </span>
+                          <span v-if="!t.assigned_devs?.length" style="font-size:11px;color:var(--gray-400);">—</span>
+                        </div>
+                      </td>
+                      <td><span :class="['tt-dev-status-badge', 'tt-dev-status--' + (t.dev_status || 'Not Started').toLowerCase().replace(/\s+/g, '-')]">{{ t.dev_status || 'Not Started' }}</span></td>
+                      <td><span :class="['badge', mtStatusBadgeClass(t.status)]">{{ t.status }}</span></td>
+                      <td><span :class="['age-badge', mtAgeBadgeClass(t)]">{{ mtAgeDays(t) }}d</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div v-else class="empty-state" style="padding:40px;">
+                  <div class="empty-state-icon">🔧</div>
+                  <div class="empty-state-title">{{ allMaintenanceTickets.length ? 'No tickets match your filters' : 'No maintenance tickets' }}</div>
+                  <div class="empty-state-text">{{ allMaintenanceTickets.length ? 'Try a different search or clear the filters' : 'Maintenance tickets will appear here once created' }}</div>
+                  <button v-if="mtSearch || mtStatusPill !== 'all'" class="btn btn-ghost btn-sm" style="margin-top:12px;" @click="mtSearch = ''; mtStatusPill = 'all'">Clear filters</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           </template><!-- end v-else tracker list -->
 
         </div>
@@ -1074,9 +1440,12 @@
         <!-- ══ Dev Folders view ══ -->
         <div v-else-if="devFoldersViewOpen">
           <div class="view-header">
-            <div>
-              <h1 class="view-title">Dev Folders</h1>
-              <p class="view-subtitle">{{ devFolders.length }} folder{{ devFolders.length !== 1 ? 's' : '' }}</p>
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div class="df-page-icon">📁</div>
+              <div>
+                <h1 class="view-title" style="margin:0;">Dev Folders</h1>
+                <p class="view-subtitle" style="margin:2px 0 0;">{{ devFolders.length }} folder{{ devFolders.length !== 1 ? 's' : '' }} · Shared portals for each developer</p>
+              </div>
             </div>
             <button class="btn btn-ghost btn-sm" @click="fetchDevFolders" title="Refresh">
               <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
@@ -1084,54 +1453,169 @@
             </button>
           </div>
 
+          <!-- ── Dev Folders Summary ── -->
+          <div v-if="devFoldersSummary" class="dfs-wrap">
+
+            <!-- Left: overall stats -->
+            <div class="dfs-overall">
+              <div class="dfs-section-label"><span>📅</span> {{ devFoldersSummary.date }}</div>
+
+              <div class="dfs-stat-grid">
+                <div class="dfs-stat-card" style="--sc:#4f46e5;--sc-bg:#eef2ff;--sc-bd:#c7d2fe;">
+                  <div class="dfs-stat-num">{{ devFoldersSummary.overall.total_active }}</div>
+                  <div class="dfs-stat-lbl">Active Fixes</div>
+                </div>
+                <div class="dfs-stat-card" style="--sc:#d97706;--sc-bg:#fffbeb;--sc-bd:#fde68a;">
+                  <div class="dfs-stat-num">{{ devFoldersSummary.overall.pending }}</div>
+                  <div class="dfs-stat-lbl">Pending</div>
+                </div>
+                <div class="dfs-stat-card" style="--sc:#2563eb;--sc-bg:#eff6ff;--sc-bd:#bfdbfe;">
+                  <div class="dfs-stat-num">{{ devFoldersSummary.overall.ongoing_fixing }}</div>
+                  <div class="dfs-stat-lbl">Fixing</div>
+                </div>
+                <div class="dfs-stat-card" style="--sc:#7c3aed;--sc-bg:#f5f3ff;--sc-bd:#ddd6fe;">
+                  <div class="dfs-stat-num">{{ devFoldersSummary.overall.ongoing_qa }}</div>
+                  <div class="dfs-stat-lbl">In QA</div>
+                </div>
+                <div class="dfs-stat-card" style="--sc:#dc2626;--sc-bg:#fef2f2;--sc-bd:#fecaca;">
+                  <div class="dfs-stat-num">{{ devFoldersSummary.overall.sent_back }}</div>
+                  <div class="dfs-stat-lbl">Blocked</div>
+                </div>
+                <div class="dfs-stat-card" style="--sc:#15803d;--sc-bg:#f0fdf4;--sc-bd:#bbf7d0;">
+                  <div class="dfs-stat-num">{{ devFoldersSummary.overall.total_completed }}</div>
+                  <div class="dfs-stat-lbl">Completed</div>
+                </div>
+              </div>
+
+              <div class="dfs-section-label" style="margin-top:18px;"><span>🔥</span> By Priority</div>
+              <div class="dfs-priority-row">
+                <div class="dfs-priority-item dfs-p--critical">
+                  <span class="dfs-p-dot"></span>
+                  <span class="dfs-p-val">{{ devFoldersSummary.overall.critical }}</span>
+                  <span class="dfs-p-label">Critical</span>
+                </div>
+                <div class="dfs-priority-item dfs-p--high">
+                  <span class="dfs-p-dot"></span>
+                  <span class="dfs-p-val">{{ devFoldersSummary.overall.high }}</span>
+                  <span class="dfs-p-label">High</span>
+                </div>
+                <div class="dfs-priority-item dfs-p--medium">
+                  <span class="dfs-p-dot"></span>
+                  <span class="dfs-p-val">{{ devFoldersSummary.overall.medium }}</span>
+                  <span class="dfs-p-label">Medium</span>
+                </div>
+                <div class="dfs-priority-item dfs-p--low">
+                  <span class="dfs-p-dot"></span>
+                  <span class="dfs-p-val">{{ devFoldersSummary.overall.low }}</span>
+                  <span class="dfs-p-label">Low</span>
+                </div>
+              </div>
+
+              <!-- Resolution Rate (compact) -->
+              <template v-if="dfsSummaryProgress">
+                <div class="dfs-section-label" style="margin-top:18px;"><span>📊</span> Resolution Rate</div>
+                <div class="dfs-progress-compact">
+                  <div class="dfs-progress-track">
+                    <div v-if="dfsSummaryProgress.done"    class="dfs-pb dfs-pb--done"    :style="{ width: dfsSummaryProgress.done    + '%' }"></div>
+                    <div v-if="dfsSummaryProgress.active"  class="dfs-pb dfs-pb--active"  :style="{ width: dfsSummaryProgress.active  + '%' }"></div>
+                    <div v-if="dfsSummaryProgress.pend"    class="dfs-pb dfs-pb--pend"    :style="{ width: dfsSummaryProgress.pend    + '%' }"></div>
+                    <div v-if="dfsSummaryProgress.blocked" class="dfs-pb dfs-pb--blocked" :style="{ width: dfsSummaryProgress.blocked + '%' }"></div>
+                  </div>
+                  <div class="dfs-progress-compact-row">
+                    <span class="dfs-progress-compact-pct">{{ dfsSummaryProgress.pct }}% resolved</span>
+                    <div class="dfs-progress-legend">
+                      <span class="dfs-pl dfs-pl--done"><i></i>Done</span>
+                      <span class="dfs-pl dfs-pl--active"><i></i>Active</span>
+                      <span class="dfs-pl dfs-pl--pend"><i></i>Pending</span>
+                      <span class="dfs-pl dfs-pl--blocked"><i></i>Blocked</span>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+
+            <!-- Right: per-developer summary -->
+            <div class="dfs-devs">
+              <div class="dfs-section-label"><span>👥</span> Developers' Summary</div>
+              <div class="dfs-devs-list">
+                <!-- Bug Tracker devs -->
+                <template v-if="devFoldersSummary.developers.length">
+                  <div class="dfs-sub-label">
+                    <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+                    Bug Tracker
+                  </div>
+                  <div v-for="dev in devFoldersSummary.developers" :key="dev.email" class="dfs-dev-row dfs-dev-row--clickable" @click="openFolderDetailByEmail(dev.email)">
+                    <div class="dfs-dev-avatar" :style="{ background: dev.avatar_color || '#4338ca' }">{{ folderInitials(dev.name) }}</div>
+                    <div class="dfs-dev-info">
+                      <div class="dfs-dev-name">{{ dev.name }}</div>
+                      <div class="dfs-dev-email">{{ dev.email }}</div>
+                    </div>
+                    <div class="dfs-dev-badges">
+                      <span class="dfs-dev-badge dfs-dev-badge--pending"><strong>{{ dev.pending }}</strong><span>Pending</span></span>
+                      <span class="dfs-dev-badge dfs-dev-badge--active"><strong>{{ dev.active }}</strong><span>Active</span></span>
+                      <span class="dfs-dev-badge dfs-dev-badge--done"><strong>{{ dev.completed }}</strong><span>Done</span></span>
+                    </div>
+                  </div>
+                </template>
+                <!-- Maintenance devs -->
+                <template v-if="maintenanceDevs.length">
+                  <div class="dfs-sub-label" :style="devFoldersSummary.developers.length ? 'margin-top:14px;' : ''">
+                    <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                    Maintenance
+                  </div>
+                  <div v-for="(dev, idx) in maintenanceDevs" :key="'m-' + dev.email" class="dfs-dev-row dfs-dev-row--clickable" @click="openMaintenanceDevDetail(dev, idx)">
+                    <div class="dfs-dev-avatar" :style="{ background: getMaintDevColor(dev.email, idx) }">{{ folderInitials(dev.email.split('@')[0]) }}</div>
+                    <div class="dfs-dev-info">
+                      <div class="dfs-dev-name">{{ dev.email.split('@')[0] }}</div>
+                      <div class="dfs-dev-email">{{ dev.email }}</div>
+                    </div>
+                    <div class="dfs-dev-badges">
+                      <span class="dfs-dev-badge dfs-dev-badge--pending"><strong>{{ dev.pending }}</strong><span>Pending</span></span>
+                      <span class="dfs-dev-badge dfs-dev-badge--active"><strong>{{ dev.in_progress }}</strong><span>Active</span></span>
+                      <span class="dfs-dev-badge dfs-dev-badge--done"><strong>{{ dev.completed }}</strong><span>Done</span></span>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+          </div>
+
           <div v-if="devFoldersLoading" style="text-align:center;padding:60px;color:var(--gray-400);">
             <div style="width:28px;height:28px;border:3px solid #e2e8f0;border-top-color:#6366f1;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px;"></div>
             Loading folders…
           </div>
 
-          <div v-else-if="!devFolders.length" class="empty-state">
-            <div class="empty-state-icon">📭</div>
-            <div class="empty-state-title">No folders yet</div>
-            <div class="empty-state-text">Folders are created automatically when you assign a developer to a bug and generate their link.</div>
-          </div>
+          <template v-else>
+            <!-- ── Bug Tracker Folders ── -->
+            <div class="df-section-label">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+              Bug Tracker
+            </div>
 
-          <div v-else class="df-grid">
-            <div v-for="folder in devFolders" :key="folder.token" class="df-card">
-              <div class="df-card-stripe"></div>
+          <div v-if="devFolders.length" class="df-grid">
+            <div v-for="(folder, idx) in devFolders" :key="folder.token" class="df-card df-card--clickable" :style="`--i:${idx}`" @click="openFolderDetail(folder)">
+              <div class="df-card-hero" :style="{ background: folder.avatar_color || '#4f46e5' }">
+                <button
+                  :class="['df-vis-badge', folder.visibility === 'public' ? 'df-vis--pub' : 'df-vis--priv']"
+                  :title="folder.visibility === 'public' ? 'Click to make private' : 'Click to make public'"
+                  @click.stop="toggleFolderVisibility(folder)"
+                >
+                  <svg v-if="folder.visibility === 'public'" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                  <svg v-else width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  {{ folder.visibility === 'public' ? 'Public' : 'Private' }}
+                </button>
+              </div>
               <div class="df-card-body">
-                <div class="df-card-top">
-                  <div class="df-avatar">{{ folderInitials(folder.developer_name) }}</div>
-                  <div class="df-card-info">
-                    <div class="df-card-name">{{ folder.developer_name }}</div>
-                    <div class="df-card-email">{{ folder.developer_email }}</div>
-                  </div>
-                  <button
-                    :class="['df-vis-pill', folder.visibility === 'public' ? 'df-vis--public' : 'df-vis--private']"
-                    :title="folder.visibility === 'public' ? 'Click to make private' : 'Click to make public'"
-                    @click="toggleFolderVisibility(folder)"
-                  >
-                    <span v-if="folder.visibility === 'public'">
-                      <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-                      Public
-                    </span>
-                    <span v-else>
-                      <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                      Private
-                    </span>
-                  </button>
-                </div>
-
-                <div class="df-card-project">
-                  <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                  All projects
-                </div>
-
+                <div class="df-avatar" :style="{ background: folder.avatar_color || '#4f46e5' }">{{ folderInitials(folder.developer_name) }}</div>
+                <div class="df-card-name">{{ folder.developer_name }}</div>
+                <div class="df-card-email">{{ folder.developer_email }}</div>
                 <div class="df-card-footer">
-                  <button class="df-action-btn df-action-copy" @click="copyFolderLink(folder)" title="Copy link">
+                  <button class="df-action-btn df-action-copy" @click.stop="copyFolderLink(folder)" title="Copy link">
                     <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                     Copy link
                   </button>
-                  <a :href="'/dev-folder/' + folder.token" target="_blank" rel="noopener" class="df-action-btn df-action-open">
+                  <a :href="'/dev-folder/' + folder.token" target="_blank" rel="noopener" class="df-action-btn df-action-open" @click.stop>
                     <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                     Open
                   </a>
@@ -1139,6 +1623,230 @@
               </div>
             </div>
           </div>
+
+          <!-- ── Maintenance Folders ── -->
+          <div class="df-section-label" style="margin-top:28px;">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+            Maintenance
+          </div>
+
+          <div v-if="maintenanceDevs.length" class="df-grid">
+            <div
+              v-for="(dev, idx) in maintenanceDevs"
+              :key="dev.email"
+              class="df-card df-card--clickable"
+              :style="`--i:${idx}`"
+              @click="openMaintenanceDevDetail(dev, idx)"
+            >
+              <div class="df-card-hero" :style="{ background: getMaintDevColor(dev.email, idx) }">
+                <button
+                  :class="['df-vis-badge', getMaintDevVisibility(dev.email) === 'public' ? 'df-vis--pub' : 'df-vis--priv']"
+                  :title="getMaintDevVisibility(dev.email) === 'public' ? 'Click to make private' : 'Click to make public'"
+                  @click.stop="toggleMaintDevVisibility(dev.email)"
+                >
+                  <svg v-if="getMaintDevVisibility(dev.email) === 'public'" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                  <svg v-else width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  {{ getMaintDevVisibility(dev.email) === 'public' ? 'Public' : 'Private' }}
+                </button>
+              </div>
+              <div class="df-card-body">
+                <div class="df-avatar" :style="{ background: getMaintDevColor(dev.email, idx) }">{{ folderInitials(dev.email.split('@')[0]) }}</div>
+                <div class="df-card-name">{{ dev.email.split('@')[0] }}</div>
+                <div class="df-card-email">{{ dev.email }}</div>
+                <div style="margin:3px 0 6px;display:flex;gap:4px;flex-wrap:wrap;">
+                  <span v-if="dev.roles.includes('dev')" style="font-size:10px;padding:1px 6px;border-radius:8px;background:#ede9fe;color:#6d28d9;font-weight:600;">Dev</span>
+                  <span v-if="dev.roles.includes('qa')" style="font-size:10px;padding:1px 6px;border-radius:8px;background:#e0f2fe;color:#0369a1;font-weight:600;">QA</span>
+                </div>
+                <div class="df-card-footer">
+                  <button class="df-action-btn df-action-copy" @click.stop="copyMaintenanceFolderLink(dev.email)" title="Copy link">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    Copy link
+                  </button>
+                  <a :href="maintenanceFolderUrl(dev.email)" target="_blank" rel="noopener" class="df-action-btn df-action-open" @click.stop>
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    Open
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-else-if="!devFoldersLoading" style="font-size:13px;color:var(--gray-400);padding:12px 0;">No maintenance developers found.</div>
+
+          <!-- ── Maintenance Dev Detail Modal ── -->
+          <Teleport to="body">
+            <Transition name="modal-fade">
+              <div v-if="maintDevDetail" class="df-detail-overlay" @click.self="closeMaintDevDetail">
+                <div class="df-detail-modal">
+                  <div class="df-detail-header" :style="{ background: `linear-gradient(135deg, ${maintDevDetail.color} 0%, ${maintDevDetail.color}cc 100%)` }">
+                    <div style="display:flex;align-items:center;gap:14px;">
+                      <div class="df-detail-avatar" :style="{ background: 'rgba(255,255,255,.22)', borderColor: 'rgba(255,255,255,.45)' }">{{ folderInitials(maintDevDetail.dev.email.split('@')[0]) }}</div>
+                      <div>
+                        <div class="df-detail-name">{{ maintDevDetail.dev.email.split('@')[0] }}</div>
+                        <div class="df-detail-email">{{ maintDevDetail.dev.email }}</div>
+                        <button
+                          :class="['df-vis-badge', getMaintDevVisibility(maintDevDetail.dev.email) === 'public' ? 'df-vis--pub' : 'df-vis--priv']"
+                          style="margin-top:5px;"
+                          :title="getMaintDevVisibility(maintDevDetail.dev.email) === 'public' ? 'Click to make private' : 'Click to make public'"
+                          @click.stop="toggleMaintDevVisibility(maintDevDetail.dev.email)"
+                        >
+                          <svg v-if="getMaintDevVisibility(maintDevDetail.dev.email) === 'public'" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                          <svg v-else width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                          {{ getMaintDevVisibility(maintDevDetail.dev.email) === 'public' ? 'Public' : 'Private' }}
+                        </button>
+                      </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                      <!-- Color picker -->
+                      <div class="df-color-picker-wrap" @click.stop>
+                        <button class="df-detail-close" title="Change color" @click.stop="maintColorPickerOpen = !maintColorPickerOpen">
+                          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+                        </button>
+                        <div v-if="maintColorPickerOpen" class="df-color-swatches">
+                          <button
+                            v-for="c in MAINT_DEV_COLORS" :key="c"
+                            class="df-color-swatch"
+                            :class="{ 'df-color-swatch--active': c === maintDevDetail.color }"
+                            :style="{ background: c }"
+                            @click.stop="setMaintDevColor(maintDevDetail.dev.email, c)"
+                          ></button>
+                        </div>
+                      </div>
+                      <button class="df-detail-close" @click="closeMaintDevDetail">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div v-if="maintDevDetailLoading" style="text-align:center;padding:36px;color:var(--gray-400);">
+                    <div style="width:26px;height:26px;border:3px solid #e2e8f0;border-top-color:#059669;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 10px;"></div>
+                    Loading tickets…
+                  </div>
+
+                  <div v-else class="df-detail-body">
+                    <div class="df-detail-stats">
+                      <div class="df-detail-stat" style="--sc:#d97706;--sc-bg:#fffbeb;--sc-bd:#fde68a;">
+                        <div class="df-detail-stat-num">{{ maintDevDetailStats.pending }}</div>
+                        <div class="df-detail-stat-lbl">Pending</div>
+                      </div>
+                      <div class="df-detail-stat" style="--sc:#2563eb;--sc-bg:#eff6ff;--sc-bd:#bfdbfe;">
+                        <div class="df-detail-stat-num">{{ maintDevDetailStats.in_progress }}</div>
+                        <div class="df-detail-stat-lbl">In Progress</div>
+                      </div>
+                      <div class="df-detail-stat" style="--sc:#7c3aed;--sc-bg:#f5f3ff;--sc-bd:#ddd6fe;">
+                        <div class="df-detail-stat-num">{{ maintDevDetailStats.on_hold }}</div>
+                        <div class="df-detail-stat-lbl">On Hold</div>
+                      </div>
+                      <div class="df-detail-stat" style="--sc:#15803d;--sc-bg:#f0fdf4;--sc-bd:#bbf7d0;">
+                        <div class="df-detail-stat-num">{{ maintDevDetailStats.completed }}</div>
+                        <div class="df-detail-stat-lbl">Completed</div>
+                      </div>
+                    </div>
+
+                    <div v-if="maintDevDetailTickets.length" class="df-detail-bugs">
+                      <div class="df-detail-bugs-title">Assigned Tickets</div>
+                      <div v-for="t in maintDevDetailTickets" :key="t.id" class="df-detail-bug-row">
+                        <span class="df-detail-bug-seq">{{ t.ticket_number }}</span>
+                        <span class="df-detail-bug-title">{{ t.client }} — {{ t.request }}</span>
+                        <span :class="['badge', maintStatusBadgeClass(t.status)]">{{ t.status }}</span>
+                      </div>
+                    </div>
+                    <div v-else style="text-align:center;padding:28px 0;color:var(--gray-400);font-size:13px;">
+                      No tickets assigned yet
+                    </div>
+                  </div>
+
+                  <div class="df-detail-footer">
+                    <a :href="maintenanceFolderUrl(maintDevDetail.dev.email)" target="_blank" rel="noopener" class="btn btn-sm" style="background:#059669;color:#fff;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+                      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                      Open Full Folder
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </Transition>
+          </Teleport>
+
+          <!-- ── Dev Folder Detail Modal ── -->
+          <Teleport to="body">
+            <Transition name="modal-fade">
+              <div v-if="devFolderDetail" class="df-detail-overlay" @click.self="closeFolderDetail">
+                <div class="df-detail-modal">
+                  <!-- Modal header -->
+                  <div class="df-detail-header" :style="{ background: `linear-gradient(135deg, ${devFolderDetail.avatar_color || '#4f46e5'} 0%, ${devFolderDetail.avatar_color || '#4f46e5'}cc 100%)` }">
+                    <div style="display:flex;align-items:center;gap:14px;">
+                      <div class="df-detail-avatar" :style="{ background: 'rgba(255,255,255,.22)', borderColor: 'rgba(255,255,255,.45)' }">{{ folderInitials(devFolderDetail.developer_name) }}</div>
+                      <div>
+                        <div class="df-detail-name">{{ devFolderDetail.developer_name }}</div>
+                        <div class="df-detail-email">{{ devFolderDetail.developer_email }}</div>
+                      </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                      <!-- Color picker -->
+                      <div class="df-color-picker-wrap" @click.stop>
+                        <button class="df-detail-close" title="Change color" @click.stop="colorPickerOpen = !colorPickerOpen">
+                          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+                        </button>
+                        <div v-if="colorPickerOpen" class="df-color-swatches">
+                          <button
+                            v-for="c in AVATAR_COLORS" :key="c"
+                            class="df-color-swatch"
+                            :class="{ 'df-color-swatch--active': c === devFolderDetail.avatar_color }"
+                            :style="{ background: c }"
+                            @click.stop="updateFolderColor(devFolderDetail, c)"
+                          ></button>
+                        </div>
+                      </div>
+                      <button class="df-detail-close" @click="closeFolderDetail">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div v-if="devFolderDetailLoading" style="text-align:center;padding:36px;color:var(--gray-400);">
+                    <div style="width:26px;height:26px;border:3px solid #e2e8f0;border-top-color:#6366f1;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 10px;"></div>
+                    Loading tickets…
+                  </div>
+
+                  <div v-else class="df-detail-body">
+                    <!-- Stat row -->
+                    <div class="df-detail-stats">
+                      <div class="df-detail-stat" style="--sc:#4f46e5;--sc-bg:#eef2ff;--sc-bd:#c7d2fe;">
+                        <div class="df-detail-stat-num">{{ folderDetailStats.total }}</div>
+                        <div class="df-detail-stat-lbl">Total</div>
+                      </div>
+                      <div class="df-detail-stat" style="--sc:#d97706;--sc-bg:#fffbeb;--sc-bd:#fde68a;">
+                        <div class="df-detail-stat-num">{{ folderDetailStats.pending }}</div>
+                        <div class="df-detail-stat-lbl">Pending</div>
+                      </div>
+                      <div class="df-detail-stat" style="--sc:#2563eb;--sc-bg:#eff6ff;--sc-bd:#bfdbfe;">
+                        <div class="df-detail-stat-num">{{ folderDetailStats.ongoing }}</div>
+                        <div class="df-detail-stat-lbl">Ongoing</div>
+                      </div>
+                      <div class="df-detail-stat" style="--sc:#15803d;--sc-bg:#f0fdf4;--sc-bd:#bbf7d0;">
+                        <div class="df-detail-stat-num">{{ folderDetailStats.completed }}</div>
+                        <div class="df-detail-stat-lbl">Completed</div>
+                      </div>
+                    </div>
+
+                    <!-- Bug list -->
+                    <div v-if="devFolderDetailBugs.length" class="df-detail-bugs">
+                      <div class="df-detail-bugs-title">Assigned Tickets</div>
+                      <div v-for="bug in devFolderDetailBugs" :key="bug.id" class="df-detail-bug-row">
+                        <span class="df-detail-bug-seq">#{{ bug.sequence }}</span>
+                        <span class="df-detail-bug-title">{{ bug.title }}</span>
+                        <span :class="['badge', priorityBadgeClass(bug.priority)]">{{ bug.priority }}</span>
+                        <span :class="['badge', statusBadgeClass(bug.status)]">{{ bug.status }}</span>
+                      </div>
+                    </div>
+                    <div v-else style="text-align:center;padding:28px 0;color:var(--gray-400);font-size:13px;">
+                      No tickets assigned yet
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Transition>
+          </Teleport>
+          </template>
         </div>
 
         <!-- ══ Project view ══ -->
@@ -1232,9 +1940,9 @@
             <!-- Project header -->
             <div class="view-header">
               <div style="display:flex;align-items:center;gap:12px;">
-                <button class="btn btn-ghost btn-sm" style="gap:4px;" @click="selectProject(null)">
+                <button class="btn btn-ghost btn-sm" style="gap:4px;" @click="isSharedView ? navigateTo('/shared') : selectProject(null)">
                   <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-                  All Projects
+                  {{ isSharedView ? 'My Shared Projects' : 'All Projects' }}
                 </button>
                 <div class="project-view-name">
                   <span class="project-view-dot" :style="{ background: selectedProject.color }"></span>
@@ -1256,9 +1964,24 @@
             <!-- Summary cards -->
             <div class="summary-grid">
               <div class="summary-card">
+                <!-- Completion badge -->
+                <div style="position:absolute;top:14px;right:16px;font-size:11px;font-weight:700;color:#15803d;background:#dcfce7;padding:2px 9px;border-radius:20px;letter-spacing:.01em;">
+                  {{ completionPct }}% done
+                </div>
                 <div class="summary-card-icon">🐛</div>
                 <div class="summary-card-label">Total Bugs</div>
                 <div class="summary-card-value">{{ summary.total || 0 }}</div>
+                <!-- Segmented progress bar -->
+                <div style="margin-top:14px;height:6px;border-radius:999px;background:#f1f5f9;overflow:hidden;display:flex;gap:2px;">
+                  <div v-if="pendingPct"  :style="{ width: pendingPct  + '%', background: '#f59e0b', borderRadius: '999px', flexShrink: 0 }"></div>
+                  <div v-if="ongoingPct"  :style="{ width: ongoingPct  + '%', background: '#3b82f6', borderRadius: '999px', flexShrink: 0 }"></div>
+                  <div v-if="completionPct" :style="{ width: completionPct + '%', background: '#22c55e', borderRadius: '999px', flexShrink: 0 }"></div>
+                </div>
+                <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">
+                  <span style="font-size:10px;color:#92400e;display:flex;align-items:center;gap:4px;"><span style="width:7px;height:7px;border-radius:50%;background:#f59e0b;display:inline-block;flex-shrink:0;"></span>Pending</span>
+                  <span style="font-size:10px;color:#1d4ed8;display:flex;align-items:center;gap:4px;"><span style="width:7px;height:7px;border-radius:50%;background:#3b82f6;display:inline-block;flex-shrink:0;"></span>Ongoing</span>
+                  <span style="font-size:10px;color:#15803d;display:flex;align-items:center;gap:4px;"><span style="width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block;flex-shrink:0;"></span>Done</span>
+                </div>
               </div>
 
               <div class="summary-card summary-card-clickable" @click="openDetailView('status')">
@@ -1356,7 +2079,7 @@
                         <td><span :class="['badge', priorityBadgeClass(bug.priority)]">{{ bug.priority }}</span></td>
                         <td><span :class="['badge', scenarioBadgeClass(bug.scenario_type)]">{{ bug.scenario_type }}</span></td>
                         <td>
-                          <select :value="bug.status" :class="['status-select', 'status-select--' + bug.status.toLowerCase().replace(/\s+/g,'-')]" @change="updateStatus(bug, $event.target.value)">
+                          <select :value="bug.status" :class="['status-select', 'status-select--' + bug.status.toLowerCase().replace(/\s+/g,'-')]" @change="updateStatus(bug, $event.target.value)" :disabled="!canEditProject(selectedProject)">
                             <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
                           </select>
                         </td>
@@ -1382,7 +2105,8 @@
                           <div class="assign-dev-wrap">
                             <button
                               :class="['assign-dev-btn', { 'assign-dev-btn--assigned': bug.assigned_developers?.length }]"
-                              @click.stop="openAssignDropdown(bug.id)"
+                              @click.stop="canEditProject(selectedProject) && openAssignDropdown(bug.id)"
+                              :disabled="!canEditProject(selectedProject)"
                             >
                               <template v-if="bug.assigned_developers?.length">
                                 <span class="assign-avatars-stack">
@@ -1472,6 +2196,7 @@
                             :value="bug.dev_status || 'Not Started'"
                             :class="['dev-status-select', 'dev-status--' + (bug.dev_status || 'Not Started').toLowerCase().replace(/\s+/g, '-')]"
                             @change="updateDevStatus(bug, $event.target.value)"
+                            :disabled="!canEditProject(selectedProject)"
                           >
                             <option value="Not Started">Not Started</option>
                             <option value="In Progress">In Progress</option>
@@ -1509,6 +2234,18 @@
                               ⚠️ Blocked
                             </span>
                           </template>
+                          <template v-else-if="bug.dev_status === 'In Progress' && bug.ticket_sent_at">
+                            <button
+                              v-if="canEditProject(selectedProject)"
+                              class="send-ticket-btn send-ticket-btn--resend-dev"
+                              :disabled="!bug.has_assignment"
+                              title="Resend ticket to developer"
+                              @click="openResendTicketModal(bug)"
+                            >
+                              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
+                              Send to Dev
+                            </button>
+                          </template>
                           <template v-else>
                             <div v-if="bug.ticket_sent_at" style="display:flex;align-items:center;gap:4px;">
                               <span class="send-ticket-btn send-ticket-btn--sent" style="pointer-events:none;">
@@ -1516,6 +2253,7 @@
                                 Sent
                               </span>
                               <button
+                                v-if="canEditProject(selectedProject)"
                                 class="resend-ticket-btn"
                                 title="Resend ticket to developer"
                                 @click="openResendTicketModal(bug)"
@@ -1524,7 +2262,7 @@
                               </button>
                             </div>
                             <button
-                              v-else
+                              v-else-if="canEditProject(selectedProject)"
                               :class="['send-ticket-btn', bug.has_assignment ? 'send-ticket-btn--active' : 'send-ticket-btn--disabled']"
                               :disabled="!bug.has_assignment"
                               :title="!bug.has_assignment ? 'Assign a developer first' : 'Send ticket to developer'"
@@ -1541,10 +2279,10 @@
                             <button class="btn btn-icon action-btn-view" title="View" @click="viewBug(bug)">
                               <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                             </button>
-                            <button class="btn btn-icon action-btn-edit" title="Edit" @click="openEditModal(bug)">
+                            <button v-if="canEditProject(selectedProject)" class="btn btn-icon action-btn-edit" title="Edit" @click="openEditModal(bug)">
                               <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                             </button>
-                            <button class="btn btn-icon action-btn-delete" title="Delete" @click="confirmDelete(bug)">
+                            <button v-if="canEditProject(selectedProject)" class="btn btn-icon action-btn-delete" title="Delete" @click="confirmDelete(bug)">
                               <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
                             </button>
                           </div>
@@ -1739,6 +2477,18 @@
                     :class="{ selected: projectForm.color === c }" :style="{ background: c }" @click="projectForm.color = c"></button>
                 </div>
               </div>
+              <div class="form-group">
+                <label class="form-label">Status</label>
+                <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;">
+                  <span style="font-size:13px;color:var(--gray-700);flex:1;">
+                    {{ projectForm.is_active ? 'Active — bugs can be reported' : 'Inactive — project is closed' }}
+                  </span>
+                  <button type="button" @click="projectForm.is_active = !projectForm.is_active"
+                    :style="{ display:'flex', alignItems:'center', width:'44px', height:'24px', borderRadius:'12px', border:'none', cursor:'pointer', padding:'2px', transition:'background .2s', background: projectForm.is_active ? '#4f46e5' : '#d1d5db', justifyContent: projectForm.is_active ? 'flex-end' : 'flex-start' }">
+                    <span style="width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);"></span>
+                  </button>
+                </div>
+              </div>
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" @click="showProjectModal = false">Cancel</button>
@@ -1816,7 +2566,7 @@
               <h3 class="modal-title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ viewingBugDetail?.title }}</h3>
             </div>
             <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-              <button class="btn btn-sm action-btn-edit" style="gap:5px;" @click="openEditModal(viewingBugDetail); showViewModal = false">
+              <button v-if="canEditProject(selectedProject)" class="btn btn-sm action-btn-edit" style="gap:5px;" @click="openEditModal(viewingBugDetail); showViewModal = false">
                 <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 Edit
               </button>
@@ -2101,21 +2851,18 @@
                   style="flex:1;"
                   @keydown.enter.prevent="inviteUser"
                 />
-                <select v-model="shareForm.permission" class="form-control" style="width:110px;">
-                  <option value="viewer">Viewer</option>
-                  <option value="editor">Editor</option>
+                <select v-model="shareForm.permission" class="share-perm-select">
+                  <option value="viewer">Can view</option>
+                  <option value="editor">Can edit</option>
                 </select>
                 <button class="btn btn-primary" :disabled="!shareForm.email.trim() || shareSubmitting" @click="inviteUser">
                   {{ shareSubmitting ? '…' : 'Invite' }}
                 </button>
               </div>
-              <p style="font-size:12px;color:var(--gray-400);margin-top:6px;">
-                <strong>Viewer</strong> — can view bugs only &nbsp;·&nbsp; <strong>Editor</strong> — can create, edit, and delete bugs
-              </p>
             </div>
 
             <!-- Current shares list -->
-            <div>
+            <div style="margin-bottom:20px;">
               <div class="form-label" style="margin-bottom:10px;">People with access</div>
               <div v-if="sharesLoading" style="color:var(--gray-400);font-size:13px;">Loading…</div>
               <div v-else-if="sharesList.length === 0" style="color:var(--gray-400);font-size:13px;">No one else has access yet.</div>
@@ -2132,12 +2879,12 @@
                   <div style="display:flex;align-items:center;gap:8px;">
                     <select
                       :value="share.permission"
-                      class="form-control"
-                      style="width:100px;font-size:12px;padding:4px 8px;"
+                      class="share-perm-select"
+                      style="flex:1;"
                       @change="updateSharePermission(share, $event.target.value)"
                     >
-                      <option value="viewer">Viewer</option>
-                      <option value="editor">Editor</option>
+                      <option value="viewer">Can view</option>
+                      <option value="editor">Can edit</option>
                     </select>
                     <button class="btn btn-icon action-btn-delete" title="Remove access" @click="removeShare(share.id)">
                       <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
@@ -2146,6 +2893,7 @@
                 </div>
               </div>
             </div>
+
           </div>
           <div class="modal-footer">
             <button class="btn btn-secondary" @click="showShareModal = false">Done</button>
@@ -2234,6 +2982,195 @@
       </div>
     </Transition>
 
+    <!-- Maintenance Ticket View Modal -->
+    <Transition name="fade">
+      <div v-if="selectedMtTicket" class="modal-overlay" @click.self="selectedMtTicket = null">
+        <div class="modal" style="max-width:920px;width:95%;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;padding:0;">
+          <!-- Header -->
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #f1f5f9;flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span class="bug-seq" style="background:#ecfdf5;color:#059669;font-size:12px;">{{ selectedMtTicket.ticket_number }}</span>
+              <span style="font-size:14px;font-weight:700;color:#1e293b;">{{ selectedMtTicket.client }}</span>
+              <span v-if="selectedMtTicket._project" style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--gray-500);">
+                <span style="width:7px;height:7px;border-radius:50%;display:inline-block;" :style="{ background: selectedMtTicket._project.color || '#10b981' }"></span>
+                {{ selectedMtTicket._project.name }}
+              </span>
+            </div>
+            <button class="btn btn-ghost btn-icon" @click="selectedMtTicket = null">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+
+          <!-- Two-column body -->
+          <div style="display:grid;grid-template-columns:1fr 280px;flex:1;overflow:hidden;min-height:0;">
+
+            <!-- Left: main content -->
+            <div style="padding:24px;display:flex;flex-direction:column;gap:18px;overflow-y:auto;border-right:1px solid #f1f5f9;">
+
+              <!-- Title block -->
+              <div style="display:flex;align-items:flex-start;gap:14px;background:#f8fafc;border-radius:12px;padding:18px 20px;">
+                <span style="font-size:13px;font-weight:700;color:#059669;background:#d1fae5;padding:4px 10px;border-radius:6px;white-space:nowrap;flex-shrink:0;margin-top:2px;">{{ selectedMtTicket.ticket_number }}</span>
+                <div>
+                  <h2 style="font-size:20px;font-weight:700;color:#1e293b;margin:0 0 4px;line-height:1.3;">{{ selectedMtTicket.client }}</h2>
+                  <div style="font-size:14px;color:#64748b;line-height:1.5;">{{ selectedMtTicket.request }}</div>
+                </div>
+              </div>
+
+              <!-- Request -->
+              <div style="background:#fff;border:1px solid #f1f5f9;border-radius:12px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.05);">
+                <div style="display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px;">
+                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  Request
+                </div>
+                <div style="font-size:14px;color:#334155;line-height:1.7;white-space:pre-wrap;">{{ selectedMtTicket.request }}</div>
+              </div>
+
+              <!-- Notes -->
+              <div v-if="selectedMtTicket.notes" style="background:#fff;border:1px solid #f1f5f9;border-radius:12px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.05);">
+                <div style="display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px;">
+                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  Notes
+                </div>
+                <div style="font-size:14px;color:#334155;line-height:1.7;white-space:pre-wrap;">{{ selectedMtTicket.notes }}</div>
+              </div>
+
+              <!-- Comments -->
+              <div style="background:#fff;border:1px solid #f1f5f9;border-radius:12px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.05);">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                  <div style="display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    Comments
+                  </div>
+                  <span v-if="selectedMtTicket.comments?.length" style="background:#f1f5f9;color:#475569;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;">{{ selectedMtTicket.comments.length }}</span>
+                </div>
+                <div v-if="selectedMtTicket.comments?.length" style="display:flex;flex-direction:column;gap:10px;">
+                  <div v-for="(msg, i) in selectedMtTicket.comments" :key="i" style="display:flex;flex-direction:column;gap:5px;">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                      <span style="width:26px;height:26px;border-radius:50%;background:#059669;color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">{{ (msg.author || '?')[0].toUpperCase() }}</span>
+                      <span style="font-size:13px;font-weight:600;color:#1e293b;">{{ msg.author || 'Anonymous' }}</span>
+                      <span style="font-size:11px;color:#94a3b8;">{{ formatBugDate(msg.timestamp) }}</span>
+                    </div>
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;font-size:13px;color:#334155;line-height:1.6;margin-left:34px;">{{ msg.message }}</div>
+                  </div>
+                </div>
+                <div v-else style="color:#94a3b8;font-size:13px;font-style:italic;">No comments yet.</div>
+              </div>
+
+              <!-- Attachments -->
+              <div v-if="selectedMtTicket.attachments?.length" style="background:#fff;border:1px solid #f1f5f9;border-radius:12px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.05);">
+                <div style="display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px;">
+                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                  Attachments
+                  <span style="background:#f1f5f9;color:#475569;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;">{{ selectedMtTicket.attachments.length }}</span>
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:10px;">
+                  <template v-for="(url, idx) in selectedMtTicket.attachments" :key="idx">
+                    <a v-if="/\.pdf$/i.test(url)" :href="apiBase + url" target="_blank"
+                      style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;color:#c2410c;font-size:12px;font-weight:600;text-decoration:none;">
+                      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                      {{ url.split('/').pop() }}
+                    </a>
+                    <a v-else :href="apiBase + url" target="_blank"
+                      style="position:relative;width:90px;height:90px;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0;display:block;">
+                      <img :src="apiBase + url" :alt="`Attachment ${idx+1}`" style="width:100%;height:100%;object-fit:cover;" />
+                    </a>
+                  </template>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Right: sidebar -->
+            <div style="padding:20px;display:flex;flex-direction:column;gap:14px;background:#f8fafc;overflow-y:auto;">
+
+              <!-- Dev Status -->
+              <div style="background:#fff;border-radius:12px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,.05);">
+                <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">Dev Status</div>
+                <span :class="['tt-dev-status-badge', 'tt-dev-status--' + (selectedMtTicket.dev_status || 'Not Started').toLowerCase().replace(/\s+/g,'-')]">{{ selectedMtTicket.dev_status || 'Not Started' }}</span>
+              </div>
+
+              <!-- Status -->
+              <div style="background:#fff;border-radius:12px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,.05);">
+                <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">Status</div>
+                <span :class="['badge', mtStatusBadgeClass(selectedMtTicket.status)]">{{ selectedMtTicket.status }}</span>
+              </div>
+
+              <!-- Details -->
+              <div style="background:#fff;border-radius:12px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,.05);">
+                <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">Details</div>
+                <div style="display:flex;flex-direction:column;gap:0;">
+                  <div v-if="selectedMtTicket._project" style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f1f5f9;font-size:13px;">
+                    <span style="color:#64748b;font-size:12px;">Project</span>
+                    <span style="color:#1e293b;font-weight:600;text-align:right;">{{ selectedMtTicket._project.name }}</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f1f5f9;font-size:13px;">
+                    <span style="color:#64748b;font-size:12px;">Client</span>
+                    <span style="color:#1e293b;text-align:right;">{{ selectedMtTicket.client }}</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f1f5f9;font-size:13px;">
+                    <span style="color:#64748b;font-size:12px;">Sent Through</span>
+                    <span style="color:#1e293b;text-align:right;">{{ selectedMtTicket.sent_thru || '—' }}</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f1f5f9;font-size:13px;">
+                    <span style="color:#64748b;font-size:12px;">Date Received</span>
+                    <span style="color:#1e293b;text-align:right;">{{ formatBugDate(selectedMtTicket.date_received) || '—' }}</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f1f5f9;font-size:13px;">
+                    <span style="color:#64748b;font-size:12px;">Target Date</span>
+                    <span :style="{ color: mtIsOverdue(selectedMtTicket) ? '#dc2626' : '#1e293b', fontWeight: mtIsOverdue(selectedMtTicket) ? '600' : '400', textAlign:'right' }">{{ formatBugDate(selectedMtTicket.target_date) || '—' }}</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;font-size:13px;">
+                    <span style="color:#64748b;font-size:12px;">Completion</span>
+                    <span style="color:#1e293b;text-align:right;">{{ formatBugDate(selectedMtTicket.completion_date) || '—' }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Assigned -->
+              <div style="background:#fff;border-radius:12px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,.05);">
+                <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">Assigned</div>
+                <div v-if="selectedMtTicket.assigned_devs?.length" style="margin-bottom:10px;">
+                  <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Developers</div>
+                  <div v-for="email in selectedMtTicket.assigned_devs" :key="email" style="display:flex;align-items:center;gap:8px;padding:4px 0;flex-wrap:wrap;">
+                    <span style="width:26px;height:26px;border-radius:50%;background:#059669;color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">{{ email[0].toUpperCase() }}</span>
+                    <span style="font-size:12px;color:#334155;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ email }}</span>
+                    <a :href="maintenanceFolderUrl(email)" target="_blank"
+                      style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#059669;text-decoration:none;padding:3px 8px;border-radius:6px;background:#d1fae5;border:1px solid #a7f3d0;white-space:nowrap;flex-shrink:0;">
+                      <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                      View Folder
+                    </a>
+                  </div>
+                </div>
+                <div v-if="selectedMtTicket.assigned_qa?.length">
+                  <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">QA</div>
+                  <div v-for="email in selectedMtTicket.assigned_qa" :key="email" style="display:flex;align-items:center;gap:8px;padding:4px 0;flex-wrap:wrap;">
+                    <span style="width:26px;height:26px;border-radius:50%;background:#7c3aed;color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">{{ email[0].toUpperCase() }}</span>
+                    <span style="font-size:12px;color:#334155;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ email }}</span>
+                    <a :href="maintenanceFolderUrl(email)" target="_blank"
+                      style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#059669;text-decoration:none;padding:3px 8px;border-radius:6px;background:#d1fae5;border:1px solid #a7f3d0;white-space:nowrap;flex-shrink:0;">
+                      <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                      View Folder
+                    </a>
+                  </div>
+                </div>
+                <div v-if="!selectedMtTicket.assigned_devs?.length && !selectedMtTicket.assigned_qa?.length" style="color:#94a3b8;font-size:13px;font-style:italic;">Not assigned</div>
+              </div>
+
+              <!-- Activity Log -->
+              <div style="background:#fff;border-radius:12px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,.05);">
+                <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">Activity Log</div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;font-size:13px;">
+                  <span style="color:#64748b;font-size:12px;">Comments</span>
+                  <span style="color:#1e293b;font-weight:600;">{{ selectedMtTicket.comments?.length ?? 0 }}</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
   </div>
 </template>
 
@@ -2245,6 +3182,8 @@ import { ref, computed, watch, nextTick, onMounted, onUnmounted, reactive } from
 const config     = useRuntimeConfig()
 const apiBase    = config.public.apiBase.replace('/api', '')
 const appLoading = useState('appLoading', () => false)
+
+const isSharedView = ref(false)
 
 // ── Auth state ──────────────────────────────────────────────────────────────
 const authToken           = ref(null)
@@ -2309,11 +3248,19 @@ const openNotif = async (n) => {
   }
   notifDropdownOpen.value = false
   if (n.data?.bug_id) {
-    const bug = bugs.value.find(b => b.id === n.data.bug_id)
-    if (bug) { openBugView(bug); return }
-    // Bug might not be loaded yet — navigate to ticket page directly
-    window.open(`/ticket/${n.data.bug_id}`, '_blank')
+    // Try the already-loaded bugs first
+    let bug = bugs.value.find(b => b.id === n.data.bug_id)
+    if (!bug) {
+      // Bug belongs to a different project — fetch it directly
+      try { bug = await $fetch(`${config.public.apiBase}/bugs/${n.data.bug_id}`) } catch {}
+    }
+    if (bug) { viewBug(bug) }
   }
+}
+
+const dismissNotif = async (n) => {
+  try { await $fetch(`${config.public.apiBase}/notifications/${n.id}`, { method: 'DELETE' }) } catch {}
+  notifications.value = notifications.value.filter(x => x.id !== n.id)
 }
 
 const markAllNotifRead = async () => {
@@ -2344,6 +3291,13 @@ onMounted(async () => {
   if (token) {
     authToken.value = token
     localStorage.setItem('auth_token', token)
+    const returnPath = localStorage.getItem('auth_return')
+    localStorage.removeItem('auth_return')
+    if (returnPath && returnPath !== '/') {
+      window.history.replaceState({}, '', returnPath)
+      navigateTo(returnPath)
+      return
+    }
     window.history.replaceState({}, '', '/')
   } else if (authError) {
     window.history.replaceState({}, '', '/')
@@ -2352,7 +3306,26 @@ onMounted(async () => {
     const stored = localStorage.getItem('auth_token')
     if (stored) authToken.value = stored
   }
-  if (authToken.value) await fetchCurrentUser()
+  if (urlParams.get('from') === 'shared') isSharedView.value = true
+
+  if (authToken.value) {
+    await fetchCurrentUser()
+    await fetchProjects()
+  }
+
+  // Auto-select project from ?project=ID (e.g. from shared invite link)
+  const projectId = urlParams.get('project')
+  if (projectId && projects.value.length) {
+    const found = projects.value.find(p => p.id === Number(projectId))
+    if (found) selectProject(found)
+  }
+
+  // Auto-open views from URL params
+  const view = urlParams.get('view')
+  if (view === 'tickets') {
+    window.history.replaceState({}, '', '/')
+    openTicketTracker()
+  }
 
   // Start notification polling
   fetchNotifications()
@@ -2365,6 +3338,9 @@ onMounted(async () => {
     }
     if (notifDropdownRef.value && !notifDropdownRef.value.contains(e.target)) {
       notifDropdownOpen.value = false
+    }
+    if (openProjectMenuId.value !== null) {
+      openProjectMenuId.value = null
     }
   })
 })
@@ -2379,6 +3355,7 @@ const isProjectOwner = (project) => {
 // Can edit if: no owner (legacy project), or user is owner, or user has editor share
 const canEditProject = (project) => {
   if (!project) return true
+  if (project.my_permission) return ['owner', 'edit'].includes(project.my_permission)
   if (!project.owner_id) return true          // legacy / unowned project
   if (isProjectOwner(project)) return true
   const share = projectShareMap.value[project.id]
@@ -2389,12 +3366,13 @@ const canEditProject = (project) => {
 const projectShareMap = ref({})
 
 // ── Share modal state ────────────────────────────────────────────────────────
-const showShareModal   = ref(false)
-const sharingProject   = ref(null)
-const sharesList       = ref([])
-const shareForm        = ref({ email: '', permission: 'viewer' })
-const sharesLoading    = ref(false)
-const shareSubmitting  = ref(false)
+const showShareModal      = ref(false)
+const sharingProject      = ref(null)
+const sharesList          = ref([])
+const shareForm           = ref({ email: '', permission: 'viewer' })
+const sharesLoading       = ref(false)
+const shareSubmitting     = ref(false)
+const openProjectMenuId   = ref(null)
 
 const openShareModal = async (project) => {
   sharingProject.value = project
@@ -2445,6 +3423,7 @@ const removeShare = async (shareId) => {
   } catch { console.error('Failed to remove share') }
 }
 
+
 const priorities    = ['Critical', 'High', 'Medium', 'Low']
 const statuses      = ['Pending', 'Out of Scope', 'Ongoing', 'Completed']
 const scenarioTypes = ['UI', 'Functionality', 'UI & Functionality']
@@ -2456,6 +3435,10 @@ const priorityColors = { Critical: '#ef4444', High: '#f97316', Medium: '#eab308'
 const scenarioColors = { UI: '#8b5cf6', Functionality: '#ec4899', 'UI & Functionality': '#06b6d4' }
 
 // ── Project state ──
+const dashboardOpen          = ref(false)
+const dashboardKey           = ref(0)
+const inactiveOpen           = ref(false)
+const projectStatusTab       = ref('all')
 const projects               = ref([])
 const selectedProject        = ref(null)
 const projectSearch          = ref('')
@@ -2464,11 +3447,37 @@ const showProjectModal       = ref(false)
 const showDeleteProjectModal = ref(false)
 const editingProject         = ref(null)
 const deletingProject        = ref(null)
-const projectForm            = ref({ name: '', description: '', color: '#6366f1' })
+const projectForm            = ref({ name: '', description: '', color: '#6366f1', is_active: true })
 
 // ── Bug state ──
 const bugs            = ref([])
 const summary         = ref({})
+
+// ── Bug squish animation ──────────────────────────────────────────────────
+const showSquishAnim = ref(false)
+let squishTimer = null
+const triggerSquishAnim = () => {
+  showSquishAnim.value = true
+  clearTimeout(squishTimer)
+  squishTimer = setTimeout(() => { showSquishAnim.value = false }, 2400)
+}
+
+const completionPct = computed(() => {
+  const total = summary.value.total || 0
+  if (!total) return 0
+  return Math.round((summary.value.by_status?.Completed || 0) / total * 100)
+})
+const pendingPct = computed(() => {
+  const total = summary.value.total || 0
+  if (!total) return 0
+  return Math.round((summary.value.by_status?.Pending || 0) / total * 100)
+})
+const ongoingPct = computed(() => {
+  const total = summary.value.total || 0
+  if (!total) return 0
+  return Math.round((summary.value.by_status?.Ongoing || 0) / total * 100)
+})
+
 const showModal       = ref(false)
 const showDeleteModal = ref(false)
 const showImagesModal  = ref(false)
@@ -2619,6 +3628,12 @@ watch(detailView, async (newView) => {
         responsive: true,
         maintainAspectRatio: false,
         cutout: '68%',
+        animation: {
+          animateRotate: true,
+          animateScale: true,
+          duration: 900,
+          easing: 'easeInOutQuart',
+        },
         plugins: {
           legend: {
             position: 'bottom',
@@ -2640,6 +3655,13 @@ watch(detailView, async (newView) => {
         responsive: true,
         maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
+        animation: {
+          duration: 1000,
+          easing: 'easeInOutQuart',
+        },
+        animations: {
+          y: { from: (ctx) => ctx.chart.scales.y.bottom },
+        },
         scales: {
           x: {
             grid: { color: '#f1f5f9' },
@@ -2687,7 +3709,22 @@ const openDetailView = (type) => {
 // ── Computed ──
 const threadBug = computed(() => bugs.value.find(b => b.id === threadBugId.value) || null)
 
+const overallStats = computed(() => {
+  const ps = projects.value
+  const total    = ps.reduce((s, p) => s + (p.bugs_count    || 0), 0)
+  const critical = ps.reduce((s, p) => s + (p.critical_count|| 0), 0)
+  const pending  = ps.reduce((s, p) => s + (p.pending_count || 0), 0)
+  const ongoing  = ps.reduce((s, p) => s + (p.ongoing_count || 0), 0)
+  const completed= ps.reduce((s, p) => s + (p.completed_count|| 0), 0)
+  const rate     = total > 0 ? Math.round((completed / total) * 100) : 0
+  return { totalProjects: ps.length, total, critical, pending, ongoing, completed, rate }
+})
+
+const activeProjects   = computed(() => projects.value.filter(p => p.is_active !== false))
+const inactiveProjects = computed(() => projects.value.filter(p => p.is_active === false))
+
 const filteredProjects = computed(() => projects.value.filter(p => {
+  if (isSharedView.value && p.my_permission === 'owner') return false
   if (projectSearch.value) {
     const q = projectSearch.value.toLowerCase()
     if (!p.name.toLowerCase().includes(q) && !(p.description || '').toLowerCase().includes(q)) return false
@@ -2698,6 +3735,15 @@ const filteredProjects = computed(() => projects.value.filter(p => {
   if (projectFilter.value === 'completed') return p.completed_count > 0
   return true
 }))
+
+const filteredActiveProjects = computed(() => filteredProjects.value.filter(p => p.is_active !== false))
+
+const filteredInactiveProjects = computed(() => {
+  const q = projectSearch.value.trim().toLowerCase()
+  return inactiveProjects.value.filter(p =>
+    !q || p.name.toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q)
+  )
+})
 
 const imagePreviewList = computed(() => [
   ...existingImages.value.map(url => ({ url: apiBase + url, existing: true, src: url })),
@@ -2742,18 +3788,29 @@ const selectProject = async (project) => {
   selectedProject.value    = project
   detailView.value         = null
   devFoldersViewOpen.value = false
+  inactiveOpen.value       = false
   bugs.value               = []
   summary.value            = {}
   clearFilters()
   if (project) await fetchBugs()
+  else await new Promise(r => setTimeout(r, 300))
   appLoading.value = false
+}
+
+const openInactiveView = () => {
+  projectStatusTab.value   = 'inactive'
+  inactiveOpen.value       = false
+  dashboardOpen.value      = false
+  selectedProject.value    = null
+  devFoldersViewOpen.value = false
+  ticketTrackerOpen.value  = false
 }
 
 const openProjectModal = (project) => {
   editingProject.value = project
   projectForm.value = project
-    ? { name: project.name, description: project.description || '', color: project.color }
-    : { name: '', description: '', color: '#6366f1' }
+    ? { name: project.name, description: project.description || '', color: project.color, is_active: project.is_active !== false }
+    : { name: '', description: '', color: '#6366f1', is_active: true }
   showProjectModal.value = true
 }
 
@@ -2883,6 +3940,7 @@ const updateStatus = async (bug, newStatus) => {
   try {
     const fd = new FormData(); fd.append('_method', 'PUT'); fd.append('status', newStatus)
     await apiFetch(`${config.public.apiBase}/bugs/${bug.id}`, { method: 'POST', body: fd })
+    if (newStatus === 'Completed') triggerSquishAnim()
     await fetchBugs(); await fetchProjects()
   } catch (e) { console.error('Failed to update status', e) }
 }
@@ -2905,7 +3963,7 @@ async function generateFolderLink(dev) {
   try {
     const body = {
       developer_email: dev.email,
-      developer_name:  dev.name,
+      developer_name:  dev.name.split(' ')[0],
       visibility:      'private',
     }
 
@@ -3049,6 +4107,75 @@ const fetchAllTickets = async () => {
   } catch (e) { console.error('Failed to fetch all tickets', e) }
 }
 
+// ── Maintenance tickets in Ticket Tracker ────────────────────────────────────
+const allMaintenanceTickets = ref([])
+const selectedMtTicket      = ref(null)
+const mtSearch              = ref('')
+const mtStatusPill          = ref('all')
+
+const fetchAllMaintenanceTickets = async () => {
+  try {
+    const projects = await apiFetch(`${config.public.apiBase}/maintenance/projects`)
+    const all = []
+    await Promise.all((projects || []).map(async (proj) => {
+      try {
+        const tickets = await apiFetch(`${config.public.apiBase}/maintenance/projects/${proj.id}/tickets`)
+        ;(tickets || []).forEach(t => all.push({ ...t, _project: proj }))
+      } catch {}
+    }))
+    all.sort((a, b) => a._project.name.localeCompare(b._project.name) || a.sequence - b.sequence)
+    allMaintenanceTickets.value = all
+  } catch (e) { console.error('Failed to fetch maintenance tickets', e) }
+}
+
+const mtEmailInitials = (email) => {
+  const local = email.split('@')[0]
+  const parts = local.split(/[._-]/)
+  return parts.length >= 2 ? (parts[0][0] + parts[1][0]).toUpperCase() : local.slice(0, 2).toUpperCase()
+}
+
+const mtStatusBadgeClass = (s) => ({
+  Pending: 'badge-pending', 'In Progress': 'badge-ongoing', 'On Hold': 'badge-hold',
+  Completed: 'badge-completed', Cancelled: 'badge-out-of-scope',
+}[s] || '')
+
+const mtAgeDays = (t) => {
+  const start = t.date_received ? new Date(t.date_received) : new Date(t.created_at)
+  const end   = t.completion_date ? new Date(t.completion_date) : new Date()
+  return Math.max(0, Math.floor((end - start) / 86400000))
+}
+
+const mtIsOverdue = (t) => {
+  if (!t.target_date || t.completion_date) return false
+  const [y, m, d] = t.target_date.slice(0, 10).split('-').map(Number)
+  const target = new Date(y, m - 1, d, 23, 59, 59, 999)
+  return new Date() > target
+}
+
+const mtAgeBadgeClass = (t) => {
+  const days = mtAgeDays(t)
+  if (mtIsOverdue(t)) return 'age-badge--critical'
+  if (days > 14) return 'age-badge--high'
+  if (days > 7)  return 'age-badge--medium'
+  return 'age-badge--low'
+}
+
+const filteredMtTickets = computed(() => {
+  const q = mtSearch.value.trim().toLowerCase()
+  return allMaintenanceTickets.value.filter(t => {
+    if (mtStatusPill.value === 'pending'     && t.status !== 'Pending')     return false
+    if (mtStatusPill.value === 'in-progress' && t.status !== 'In Progress') return false
+    if (mtStatusPill.value === 'on-hold'     && t.status !== 'On Hold')     return false
+    if (mtStatusPill.value === 'completed'   && t.status !== 'Completed')   return false
+    if (mtStatusPill.value === 'overdue'     && !mtIsOverdue(t))            return false
+    if (q) {
+      const haystack = [t.ticket_number, t.client, t.request, t._project?.name].join(' ').toLowerCase()
+      if (!haystack.includes(q)) return false
+    }
+    return true
+  })
+})
+
 const ttDevFolders = ref([])
 
 async function fetchTtDevFolders() {
@@ -3071,12 +4198,15 @@ const openTicketTracker = async () => {
   devFoldersViewOpen.value = false
   detailView.value         = null
   ticketTab.value          = 'overview'
-  await Promise.all([fetchAllTickets(), fetchTtDevFolders()])
+  mtSearch.value           = ''
+  mtStatusPill.value       = 'all'
+  await Promise.all([fetchAllTickets(), fetchTtDevFolders(), fetchAllMaintenanceTickets()])
   appLoading.value = false
 }
 
 const sentTickets       = computed(() => allTickets.value.filter(t => t.ticket_sent_at))
 const resolvedTickets   = computed(() => allTickets.value.filter(t => t.status === 'Completed'))
+const pipelineTickets   = computed(() => allTickets.value.filter(t => t.status !== 'Completed'))
 const inProgressTickets = computed(() => allTickets.value.filter(t => t.ticket_sent_at && t.status !== 'Completed'))
 const pendingTickets    = computed(() => allTickets.value.filter(t => !t.has_assignment || !t.ticket_sent_at))
 const needsAssignment   = computed(() => allTickets.value.filter(t => !t.has_assignment))
@@ -3184,6 +4314,7 @@ const ttMarkResolved = async () => {
     ttDetailBug.value = { ...updated, project: ttDetailBug.value.project }
     ttCurrentStatus.value = updated.status
     updateBugInLists(updated)
+    triggerSquishAnim()
     ttScrollBottom()
   } catch (e) { console.error('Failed to resolve ticket', e) }
   finally { ttPosting.value = false }
@@ -3234,6 +4365,7 @@ const filteredAllTickets = computed(() => {
     else if (ttFilterPill.value === 'in-progress') { if (t.status !== 'Ongoing') return false }
     else if (ttFilterPill.value === 'resolved')    { if (t.status !== 'Completed') return false }
     else if (ttFilterPill.value === 'overdue')     { if (!isOverdue(t)) return false }
+    else if (ttFilterPill.value === 'sent')        { if (!t.ticket_sent_at) return false }
     if (ttFilters.project_id && t.project_id !== ttFilters.project_id) return false
     if (ttPriorityFilter.value && t.priority !== ttPriorityFilter.value) return false
     if (ttAssigneeFilter.value) {
@@ -3250,8 +4382,15 @@ const projectBreakdown = computed(() => {
   const counts = {}
   allTickets.value.forEach(t => {
     if (t.project) {
-      const key = t.project.id
-      if (!counts[key]) counts[key] = { name: t.project.name, color: t.project.color, count: 0 }
+      const key = 'bug-' + t.project.id
+      if (!counts[key]) counts[key] = { name: t.project.name, color: t.project.color || '#94a3b8', count: 0, type: 'bug' }
+      counts[key].count++
+    }
+  })
+  allMaintenanceTickets.value.forEach(t => {
+    if (t._project) {
+      const key = 'maint-' + t._project.id
+      if (!counts[key]) counts[key] = { name: t._project.name + ' [M]', color: t._project.color || '#10b981', count: 0, type: 'maint' }
       counts[key].count++
     }
   })
@@ -3264,10 +4403,27 @@ const devWorkload = computed(() => {
   const counts = {}
   allTickets.value.filter(t => t.assigned_developer && t.status !== 'Completed').forEach(t => {
     const dev = t.assigned_developer
-    const key = dev.email || dev.id || dev.name
+    const key = (dev.email || dev.id || dev.name).toString().toLowerCase()
     if (!counts[key]) counts[key] = { name: dev.name, email: dev.email ?? null, count: 0 }
     counts[key].count++
   })
+  // include maintenance devs (email arrays) — exclude Completed/Cancelled tickets
+  allMaintenanceTickets.value
+    .filter(t => !['Completed', 'Cancelled'].includes(t.status))
+    .forEach(t => {
+      ;(t.assigned_devs || []).forEach(email => {
+        const key = email.toLowerCase()
+        if (!counts[key]) {
+          const localPart = email.split('@')[0]
+          const parts     = localPart.split(/[._-]/)
+          const name      = parts.length >= 2
+            ? parts[0].charAt(0).toUpperCase() + parts[0].slice(1) + ' ' + parts[1].charAt(0).toUpperCase() + parts[1].slice(1)
+            : localPart.charAt(0).toUpperCase() + localPart.slice(1)
+          counts[key] = { name, email, count: 0 }
+        }
+        counts[key].count++
+      })
+    })
   const rows = Object.values(counts).sort((a, b) => b.count - a.count)
   const max  = rows[0]?.count || 1
   return rows.map(r => {
@@ -3288,6 +4444,13 @@ const recentActivity = computed(() => {
   })
   return entries.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 15)
 })
+
+const clearActivityLog = async () => {
+  try {
+    await apiFetch(`${config.public.apiBase}/activity-log`, { method: 'DELETE' })
+    allTickets.value = allTickets.value.map(t => ({ ...t, activity_log: [] }))
+  } catch (e) { console.error('Failed to clear activity log', e) }
+}
 
 const ticketStage = (t) => {
   if (t.status === 'Completed') return 'Resolved'
@@ -3426,12 +4589,21 @@ onMounted(() => {
 // ── Dev Folders View ──────────────────────────────────────────────────────────
 const devFoldersViewOpen = ref(false)
 const devFolders         = ref([])
+const maintenanceDevs    = ref([])
 const devFoldersLoading  = ref(false)
+const devFoldersSummary  = ref(null)
 
 async function fetchDevFolders() {
   devFoldersLoading.value = true
   try {
-    devFolders.value = await $fetch(`${config.public.apiBase}/dev-folders`)
+    const [folders, summary, mDevs] = await Promise.all([
+      $fetch(`${config.public.apiBase}/dev-folders`),
+      $fetch(`${config.public.apiBase}/dev-folders/summary`),
+      $fetch(`${config.public.apiBase}/maintenance-devs`),
+    ])
+    devFolders.value        = folders
+    devFoldersSummary.value = summary
+    maintenanceDevs.value   = mDevs
   } catch (e) {
     console.error('Failed to fetch dev folders', e)
   } finally {
@@ -3443,8 +4615,22 @@ async function openDevFoldersView() {
   appLoading.value         = true
   devFoldersViewOpen.value = true
   ticketTrackerOpen.value  = false
+  dashboardOpen.value      = false
+  inactiveOpen.value       = false
   selectedProject.value    = null
   await fetchDevFolders()
+  appLoading.value = false
+}
+
+async function openDashboard() {
+  appLoading.value         = true
+  dashboardOpen.value      = true
+  selectedProject.value    = null
+  ticketTrackerOpen.value  = false
+  devFoldersViewOpen.value = false
+  inactiveOpen.value       = false
+  await new Promise(r => setTimeout(r, 300))
+  dashboardKey.value++
   appLoading.value = false
 }
 
@@ -3471,6 +4657,193 @@ async function copyFolderLink(folder) {
   const url = `${window.location.origin}/dev-folder/${folder.token}`
   await navigator.clipboard.writeText(url)
   showToast('Folder link copied!')
+}
+
+// ── Dev Folder Detail Modal ───────────────────────────────────────────────────
+const AVATAR_COLORS = [
+  '#4f46e5','#7c3aed','#db2777','#dc2626','#ea580c',
+  '#d97706','#16a34a','#0891b2','#2563eb','#9333ea',
+  '#0d9488','#65a30d','#be185d','#0369a1','#92400e','#374151',
+]
+
+const devFolderDetail        = ref(null)
+const devFolderDetailBugs    = ref([])
+const devFolderDetailLoading = ref(false)
+const colorPickerOpen        = ref(false)
+
+const folderDetailStats = computed(() => {
+  const bugs = devFolderDetailBugs.value
+  return {
+    total:     bugs.length,
+    pending:   bugs.filter(b => b.status === 'Pending').length,
+    ongoing:   bugs.filter(b => b.status === 'Ongoing').length,
+    completed: bugs.filter(b => b.status === 'Completed').length,
+  }
+})
+
+const dfsSummaryProgress = computed(() => {
+  if (!devFoldersSummary.value) return null
+  const o = devFoldersSummary.value.overall
+  const total = o.total_bugs ?? (o.total_completed + o.total_active + o.pending + o.sent_back)
+  if (!total) return { pct: 0, total: 0, rawCompleted: 0, rawTotal: 0, done: 0, active: 0, pend: 0, blocked: 0 }
+  const pct  = (v) => Math.round(v / total * 100)
+  return {
+    pct:          pct(o.total_completed),
+    rawCompleted: o.total_completed,
+    rawTotal:     total,
+    done:         pct(o.total_completed),
+    active:       pct(o.total_active),
+    pend:         pct(o.pending),
+    blocked:      pct(o.sent_back),
+  }
+})
+
+async function openFolderDetail(folder) {
+  devFolderDetail.value        = folder
+  devFolderDetailBugs.value    = []
+  devFolderDetailLoading.value = true
+  try {
+    const res = await $fetch(`${config.public.apiBase}/dev-folders/${folder.token}/bugs`)
+    devFolderDetailBugs.value = res.bugs || []
+  } catch {
+    devFolderDetailBugs.value = []
+  } finally {
+    devFolderDetailLoading.value = false
+  }
+}
+
+function openFolderDetailByEmail(email) {
+  const folder = devFolders.value.find(f => f.developer_email.toLowerCase() === email.toLowerCase())
+  if (folder) openFolderDetail(folder)
+}
+
+function closeFolderDetail() {
+  devFolderDetail.value = null
+  colorPickerOpen.value = false
+}
+
+function maintenanceFolderUrl(email) {
+  const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
+  return `${base}/maintenance-dev-folder?email=${encodeURIComponent(email)}`
+}
+
+async function copyMaintenanceFolderLink(email) {
+  await navigator.clipboard.writeText(maintenanceFolderUrl(email))
+  showToast('Folder link copied!')
+}
+
+const MAINT_DEV_COLORS = [
+  '#059669','#0891b2','#7c3aed','#d97706','#dc2626',
+  '#2563eb','#9333ea','#db2777','#16a34a','#0d9488',
+  '#ea580c','#65a30d','#0369a1','#92400e','#374151',
+]
+
+// ── Maintenance Dev Colors (localStorage-persisted) ───────────────────────────
+const maintDevColorMap = ref({})
+
+function loadMaintDevColors() {
+  try {
+    const stored = localStorage.getItem('maint_dev_colors')
+    if (stored) maintDevColorMap.value = JSON.parse(stored)
+  } catch {}
+}
+
+function getMaintDevColor(email, idx) {
+  return maintDevColorMap.value[email] || MAINT_DEV_COLORS[idx % MAINT_DEV_COLORS.length]
+}
+
+function setMaintDevColor(email, color) {
+  maintDevColorMap.value = { ...maintDevColorMap.value, [email]: color }
+  try { localStorage.setItem('maint_dev_colors', JSON.stringify(maintDevColorMap.value)) } catch {}
+  if (maintDevDetail.value?.dev.email === email) {
+    maintDevDetail.value = { ...maintDevDetail.value, color }
+  }
+  maintColorPickerOpen.value = false
+  showToast('Color updated!')
+}
+
+// ── Maintenance Dev Visibility (localStorage-persisted) ──────────────────────
+const maintDevVisibilityMap = ref({})
+
+function loadMaintDevVisibilities() {
+  try {
+    const stored = localStorage.getItem('maint_dev_visibilities')
+    if (stored) maintDevVisibilityMap.value = JSON.parse(stored)
+  } catch {}
+}
+
+function getMaintDevVisibility(email) {
+  return maintDevVisibilityMap.value[email] || 'public'
+}
+
+function toggleMaintDevVisibility(email) {
+  const next = getMaintDevVisibility(email) === 'public' ? 'private' : 'public'
+  maintDevVisibilityMap.value = { ...maintDevVisibilityMap.value, [email]: next }
+  try { localStorage.setItem('maint_dev_visibilities', JSON.stringify(maintDevVisibilityMap.value)) } catch {}
+  showToast(`Folder set to ${next}`)
+}
+
+// ── Maintenance Dev Detail Modal ──────────────────────────────────────────────
+const maintDevDetail        = ref(null)
+const maintDevDetailTickets = ref([])
+const maintDevDetailLoading = ref(false)
+const maintColorPickerOpen  = ref(false)
+
+const maintDevDetailStats = computed(() => {
+  const tix = maintDevDetailTickets.value
+  return {
+    pending:     tix.filter(t => t.status === 'Pending').length,
+    in_progress: tix.filter(t => t.status === 'In Progress').length,
+    on_hold:     tix.filter(t => t.status === 'On Hold').length,
+    completed:   tix.filter(t => t.status === 'Completed').length,
+  }
+})
+
+async function openMaintenanceDevDetail(dev, idx) {
+  maintDevDetail.value        = { dev, color: getMaintDevColor(dev.email, idx) }
+  maintDevDetailTickets.value = []
+  maintDevDetailLoading.value = true
+  maintColorPickerOpen.value  = false
+  try {
+    const data = await $fetch(`${config.public.apiBase}/maintenance-dev-folder?email=${encodeURIComponent(dev.email)}`)
+    maintDevDetailTickets.value = data.tickets || []
+  } catch {
+    maintDevDetailTickets.value = []
+  } finally {
+    maintDevDetailLoading.value = false
+  }
+}
+
+function closeMaintDevDetail() {
+  maintDevDetail.value       = null
+  maintColorPickerOpen.value = false
+}
+
+function maintStatusBadgeClass(s) {
+  return {
+    'Pending':     'badge-pending',
+    'In Progress': 'badge-ongoing',
+    'On Hold':     'badge-outofscope',
+    'Completed':   'badge-completed',
+    'Cancelled':   'badge-outofscope',
+  }[s] || ''
+}
+
+async function updateFolderColor(folder, color) {
+  try {
+    await $fetch(`${config.public.apiBase}/dev-folders/${folder.token}`, {
+      method: 'PATCH',
+      body: { avatar_color: color },
+    })
+    folder.avatar_color = color
+    if (devFolderDetail.value?.token === folder.token) {
+      devFolderDetail.value = { ...devFolderDetail.value, avatar_color: color }
+    }
+    colorPickerOpen.value = false
+    showToast('Color updated!')
+  } catch {
+    showToast('Failed to update color', 'error')
+  }
 }
 
 // ── Send Ticket ──────────────────────────────────────────────────────────────
@@ -3559,4 +4932,6 @@ const updateDevStatus = async (bug, newStatus) => {
 
 await fetchTeamMembers()
 await fetchProjects()
+loadMaintDevColors()
+loadMaintDevVisibilities()
 </script>

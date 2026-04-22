@@ -3,6 +3,9 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BugController;
 use App\Http\Controllers\DevFolderController;
+use App\Http\Controllers\MaintenanceProjectController;
+use App\Http\Controllers\MaintenanceProjectShareController;
+use App\Http\Controllers\MaintenanceTicketController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ProjectShareController;
@@ -10,6 +13,7 @@ use Illuminate\Support\Facades\Route;
 
 // ── Authentication (Google OAuth) ──────────────────────────────────────────
 Route::get('auth/google', [AuthController::class, 'redirectToGoogle']);
+Route::get('auth/google/dev-folder/{token}', [AuthController::class, 'redirectToGoogleDevFolder']);
 Route::get('auth/google/callback', [AuthController::class, 'handleGoogleCallback']);
 Route::get('auth/me', [AuthController::class, 'me'])->middleware('api.auth:optional');
 Route::post('auth/logout', [AuthController::class, 'logout'])->middleware('api.auth');
@@ -25,8 +29,10 @@ Route::middleware('api.auth')->group(function () {
 // ── Core resources (auth optional — sets owner when logged in) ─────────────
 Route::middleware('api.auth:optional')->group(function () {
     Route::apiResource('projects', ProjectController::class);
+    Route::patch('projects/{project}/link-permission', [ProjectController::class, 'updateLinkPermission']);
     Route::apiResource('bugs', BugController::class);
     Route::get('bugs-summary', [BugController::class, 'summary']);
+    Route::delete('activity-log', [BugController::class, 'clearActivityLog']);
 
     // Assign developer & send ticket
     Route::patch('bugs/{bug}/assign', [BugController::class, 'assign']);
@@ -43,6 +49,37 @@ Route::middleware('api.auth:optional')->group(function () {
     Route::get('team-members', [BugController::class, 'teamMembers']);
 });
 
+// ── Maintenance project sharing ────────────────────────────────────────────
+Route::middleware('api.auth:optional')->group(function () {
+    Route::get('maintenance/projects/{maintenanceProject}/shares', [MaintenanceProjectShareController::class, 'index']);
+    Route::post('maintenance/projects/{maintenanceProject}/shares', [MaintenanceProjectShareController::class, 'store']);
+    Route::put('maintenance/projects/{maintenanceProject}/shares/{maintenanceProjectShare}', [MaintenanceProjectShareController::class, 'update']);
+    Route::delete('maintenance/projects/{maintenanceProject}/shares/{maintenanceProjectShare}', [MaintenanceProjectShareController::class, 'destroy']);
+});
+
+// ── Maintenance module ────────────────────────────────────────────────────
+Route::middleware('api.auth:optional')->group(function () {
+    Route::apiResource('maintenance/projects', MaintenanceProjectController::class)
+        ->parameters(['projects' => 'maintenanceProject']);
+    Route::patch('maintenance/projects/{maintenanceProject}/link-permission', [MaintenanceProjectController::class, 'updateLinkPermission']);
+    Route::get('maintenance/projects/{maintenanceProject}/tickets', [MaintenanceTicketController::class, 'index']);
+    Route::post('maintenance/projects/{maintenanceProject}/tickets', [MaintenanceTicketController::class, 'store']);
+    Route::get('maintenance/projects/{maintenanceProject}/tickets/{maintenanceTicket}', [MaintenanceTicketController::class, 'show']);
+    Route::match(['PUT', 'POST'], 'maintenance/projects/{maintenanceProject}/tickets/{maintenanceTicket}', [MaintenanceTicketController::class, 'update']);
+    Route::delete('maintenance/projects/{maintenanceProject}/tickets/{maintenanceTicket}', [MaintenanceTicketController::class, 'destroy']);
+    Route::post('maintenance/projects/{maintenanceProject}/tickets/{maintenanceTicket}/notify', [MaintenanceTicketController::class, 'notify']);
+});
+
+// ── Maintenance dev folder (public — tickets by developer email) ──────────
+Route::get('maintenance-dev-folder', [MaintenanceTicketController::class, 'devFolder']);
+Route::get('maintenance-devs', [MaintenanceTicketController::class, 'allDevs']);
+
+// ── Maintenance ticket detail (public — accessible via email link) ────────
+Route::get('maintenance-tickets/{maintenanceTicket}', [MaintenanceTicketController::class, 'publicShow']);
+Route::post('maintenance-tickets/{maintenanceTicket}/comments', [MaintenanceTicketController::class, 'addComment']);
+Route::patch('maintenance-tickets/{maintenanceTicket}/dev-status', [MaintenanceTicketController::class, 'updateTicketDevStatus']);
+Route::patch('maintenance-tickets/{maintenanceTicket}/status', [MaintenanceTicketController::class, 'updateTicketStatus']);
+
 // ── Ticket detail (public — accessible via email link) ────────────────────
 Route::get('bugs/{bug}/ticket', [BugController::class, 'ticket']);
 Route::post('bugs/{bug}/comments', [BugController::class, 'addComment']);
@@ -55,8 +92,10 @@ Route::get('notifications', [NotificationController::class, 'index']);
 Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount']);
 Route::patch('notifications/{id}/read', [NotificationController::class, 'markRead']);
 Route::patch('notifications/read-all', [NotificationController::class, 'markAllRead']);
+Route::delete('notifications/{id}', [NotificationController::class, 'destroy']);
 
 Route::get('dev-folders', [DevFolderController::class, 'index']);
+Route::get('dev-folders/summary', [DevFolderController::class, 'summary']);
 Route::post('dev-folders', [DevFolderController::class, 'store']);
 Route::patch('dev-folders/{token}', [DevFolderController::class, 'update']);
 Route::delete('dev-folders/{token}', [DevFolderController::class, 'destroy']);

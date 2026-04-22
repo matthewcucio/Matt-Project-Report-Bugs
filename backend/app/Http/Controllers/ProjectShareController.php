@@ -65,10 +65,12 @@ class ProjectShareController extends Controller
             return response()->json(['error' => 'You cannot share a project with yourself'], 422);
         }
 
-        $invitedUser = User::where('email', $validated['email'])->first();
+        $email = strtolower($validated['email']);
+
+        $invitedUser = User::whereRaw('LOWER(email) = ?', [$email])->first();
 
         $share = ProjectShare::updateOrCreate(
-            ['project_id' => $project->id, 'invited_email' => $validated['email']],
+            ['project_id' => $project->id, 'invited_email' => $email],
             [
                 'user_id'      => $invitedUser?->id,
                 'invited_by'   => $user->id,
@@ -79,10 +81,7 @@ class ProjectShareController extends Controller
 
         $share->load('user');
 
-        // Send invitation email (only if user doesn't already have access)
-        if (! $invitedUser) {
-            Mail::to($validated['email'])->send(new ProjectShareInvite($project, $share, $user));
-        }
+        Mail::to($email)->send(new ProjectShareInvite($project, $share, $user));
 
         return response()->json($this->formatShare($share), 201);
     }
